@@ -1,31 +1,39 @@
 ﻿using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Actors.Types;
 using Dalamud.Game.Internal;
 using Dalamud.Interface;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
+using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.Tweaks.UiAdjustment;
 using static SimpleTweaksPlugin.Tweaks.UiAdjustments.Step;
 using Addon = Dalamud.Game.Internal.Gui.Addon.Addon;
 
-namespace SimpleTweaksPlugin {
-    public partial class UiAdjustmentsConfig {
+namespace SimpleTweaksPlugin
+{
+    public partial class UiAdjustmentsConfig
+    {
         public ShiftTargetCastBarText.Config ShiftTargetCastBarText = new ShiftTargetCastBarText.Config();
     }
 }
 
-namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
-    public class ShiftTargetCastBarText : UiAdjustments.SubTweak {
+namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
+{
+    public class ShiftTargetCastBarText : UiAdjustments.SubTweak
+    {
 
-        public class Config {
+        public class Config
+        {
             public int Offset = 8;
+            public bool EnableCastTime = false;
         }
 
         public override string Name => "调整目标咏唱栏文字位置";
         public override string Description => "调整目标咏唱栏文字位置以方便阅读";
-        
+
         private readonly Vector2 buttonSize = new Vector2(26, 22);
 
         protected override DrawConfigDelegate DrawConfigTree => (ref bool changed) => {
@@ -48,14 +56,14 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
 
             ImGui.SameLine();
             ImGui.PushFont(UiBuilder.IconFont);
-            if (ImGui.Button($"{(char) FontAwesomeIcon.CircleNotch}", bSize)) {
+            if (ImGui.Button($"{(char)FontAwesomeIcon.CircleNotch}", bSize)) {
                 PluginConfig.UiAdjustments.ShiftTargetCastBarText.Offset = 24;
                 changed = true;
             }
             ImGui.PopFont();
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("初始位置");
 
-            
+
             ImGui.SameLine();
             ImGui.PushFont(UiBuilder.IconFont);
             if (ImGui.Button($"{(char)FontAwesomeIcon.ArrowDown}", bSize)) {
@@ -67,12 +75,21 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
             ImGui.PopStyleVar();
             ImGui.SameLine();
             ImGui.Text("垂直偏移量");
+
+            ImGui.PushFont(UiBuilder.IconFont);
+            if (ImGui.Checkbox($"###{GetType().Name}_EnableCastTime", ref PluginConfig.UiAdjustments.ShiftTargetCastBarText.EnableCastTime)) {
+                changed = true;
+            }
+            ImGui.PopFont();
+            ImGui.SameLine();
+            ImGui.Text("显示咏唱时间");
         };
 
         public void OnFrameworkUpdate(Framework framework) {
             try {
                 HandleBars(framework);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Plugin.Error(this, ex);
             }
         }
@@ -98,16 +115,20 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
         }
 
         private unsafe void HandleSeperatedCastBar(Addon addon, bool reset = false) {
-            var addonStruct = (AtkUnitBase*) (addon.Address);
+            var addonStruct = (AtkUnitBase*)(addon.Address);
             if (addonStruct->RootNode == null) return;
             var rootNode = addonStruct->RootNode;
             if (rootNode->ChildNode == null) return;
             var child = rootNode->ChildNode;
             DoShift(child, reset);
+            if (!PluginConfig.UiAdjustments.ShiftTargetCastBarText.EnableCastTime)
+                return;
+            var textNode = (AtkTextNode*)addonStruct->UldManager.NodeList[5];
+            AddCastTimeTextNode(addonStruct, textNode, !textNode->AtkResNode.IsVisible);
         }
 
         private unsafe void HandleMainTargetInfo(Addon addon, bool reset = false) {
-            var addonStruct =(AtkUnitBase*) (addon.Address);
+            var addonStruct = (AtkUnitBase*)(addon.Address);
             if (addonStruct->RootNode == null) return;
 
 
@@ -126,7 +147,6 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
             var addonStruct = (AtkUnitBase*)(addon.Address);
             if (addonStruct->RootNode == null) return;
 
-
             var rootNode = addonStruct->RootNode;
             if (rootNode->ChildNode == null) return;
             var child = rootNode->ChildNode;
@@ -136,6 +156,7 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
             }
 
             DoShift(child, reset);
+
         }
 
         private const int MinOffset = 0;
@@ -149,7 +170,64 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment {
             var p = PluginConfig.UiAdjustments.ShiftTargetCastBarText.Offset;
             if (p < MinOffset) p = MinOffset;
             if (p > MaxOffset) p = MaxOffset;
-            Marshal.WriteInt16(new IntPtr(skillTextNode), 0x92, reset ? (short) 24 : (short) p);
+            Marshal.WriteInt16(new IntPtr(skillTextNode), 0x92, reset ? (short)24 : (short)p);
+        }
+
+        private const int TargetCastNodeID = 99990002;
+
+        private unsafe void AddCastTimeTextNode(AtkUnitBase* Unit, AtkTextNode* cloneTextNode, bool reset = false) {
+            AtkTextNode* textNode = null;
+            for (var i = 7; i < Unit->UldManager.NodeListCount; i++) {
+                var node = Unit->UldManager.NodeList[i];
+                if (node->Type == NodeType.Text && node->NodeID == TargetCastNodeID) {
+                    textNode = (AtkTextNode*)node;
+                    break;
+                }
+            }
+
+            if (textNode == null) {
+                textNode = UiHelper.CloneNode(cloneTextNode);
+                textNode->AtkResNode.NodeID = TargetCastNodeID;
+                var newStrPtr = Common.Alloc(512);
+                textNode->NodeText.StringPtr = (byte*)newStrPtr;
+                textNode->NodeText.BufSize = 512;
+                UiHelper.SetText(textNode, "");
+                UiHelper.ExpandNodeList(Unit, 1);
+                Unit->UldManager.NodeList[Unit->UldManager.NodeListCount++] = (AtkResNode*)textNode;
+
+                var nextNode = Unit->UldManager.RootNode;
+
+                textNode->AtkResNode.ParentNode = (AtkResNode*)Unit;
+                textNode->AtkResNode.ChildNode = null;
+                textNode->AtkResNode.PrevSiblingNode = null;
+                textNode->AtkResNode.NextSiblingNode = nextNode;
+            }
+
+            if (reset) {
+                UiHelper.Hide(textNode);
+                return;
+            }
+            textNode->AlignmentFontType = (byte)39;
+            UiHelper.SetPosition(textNode, 0, 0);
+            UiHelper.SetSize(textNode, cloneTextNode->AtkResNode.Width, cloneTextNode->AtkResNode.Height);
+            textNode->EdgeColor = cloneTextNode->EdgeColor;
+            textNode->FontSize = cloneTextNode->FontSize;
+            UiHelper.SetText(textNode, GetTargetCastTime().ToString("00.00"));
+            UiHelper.Show(textNode);
+
+        }
+
+
+        private unsafe float GetTargetCastTime() {
+            if (PluginInterface.ClientState.LocalPlayer == null || PluginInterface.ClientState.Targets.CurrentTarget == null)
+                return 0;
+            var target = PluginInterface.ClientState.Targets.CurrentTarget;
+            if (target is Chara chara) {
+                var CastTime = Marshal.PtrToStructure<float>((target.Address + Dalamud.Game.ClientState.Structs.ActorOffsets.CurrentCastTime));
+                var TotalCastTime = Marshal.PtrToStructure<float>((target.Address + Dalamud.Game.ClientState.Structs.ActorOffsets.TotalCastTime));
+                return TotalCastTime - CastTime;
+            }
+            return 0;
         }
 
         public override void Enable() {
