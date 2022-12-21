@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
-using SimpleTweaksPlugin.Helper;
 
 namespace SimpleTweaksPlugin.GameStructs
 {

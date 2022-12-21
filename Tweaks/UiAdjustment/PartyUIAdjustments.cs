@@ -1,10 +1,10 @@
-﻿using Dalamud;
+﻿#if DEBUG
+using Dalamud;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.Tweaks.UiAdjustment;
 using System;
 using System.Collections.Generic;
@@ -13,6 +13,7 @@ using System.Diagnostics;
 using SimpleTweaksPlugin.Debugging;
 #endif
 using SimpleTweaksPlugin.GameStructs;
+using SimpleTweaksPlugin.Utility;
 
 
 namespace SimpleTweaksPlugin
@@ -35,6 +36,7 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
             public bool PartyName;
             public bool ShieldShift;
             public bool MpShield;
+            public float ShieldOffset;
         }
 
         public Configs Config => PluginConfig.UiAdjustments.PartyUiAdjustments;
@@ -70,7 +72,8 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
         {
             changed |= ImGui.Checkbox("HP及盾值百分比显示", ref Config.HpPercent);
             changed |= ImGui.Checkbox("使用盾值(估计值)替换MP值", ref Config.MpShield);
-            changed |= ImGui.Checkbox("将护盾条与血条重合显示", ref Config.ShieldShift);
+            changed |= ImGui.Checkbox("修改盾显示高度", ref Config.ShieldShift);
+            changed |= ImGui.SliderFloat("盾位移高度",ref Config.ShieldOffset,-16f,16f);
 #if DEBUG
                 changed |= ImGui.Checkbox("将队伍栏的队友姓名替换为职业名", ref Config.PartyName);
                 ImGui.SameLine();
@@ -86,23 +89,23 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
         {
             try
             {
-                partyUiUpdateHook ??= new Hook<PartyUiUpdate>(
-                    Common.Scanner.ScanText(
+                partyUiUpdateHook ??= Hook<PartyUiUpdate>.FromAddress(
+                    Service.SigScanner.ScanText(
                         "48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 48 8B 7A ?? 48 8B D9 49 8B 70 ?? 48 8B 47"),
                     new PartyUiUpdate(PartyListUpdateDelegate));
                 
-                targetUpdateHook ??= new Hook<MainTargetUiUpdate>(
-                    Common.Scanner.ScanText(
+                targetUpdateHook ??= Hook<MainTargetUiUpdate>.FromAddress(
+                    Service.SigScanner.ScanText(
                         "40 55 57 41 56 48 83 EC 40 48 8B 6A 48 48 8B F9 4D 8B 70 40 48 85 ED 0F 84 ?? ?? ?? ?? 4D 85 F6 0F 84 ?? ?? ?? ?? 48 8B 45 20 48 89 74 24 ?? 4C 89 7C 24 ?? 44 0F B6 B9 ?? ?? ?? ?? 83 38 00 8B 70 08 0F 95 C0"),
                     new MainTargetUiUpdate(TargetUpdateDelegate));
                 
-                mainTargetUpdateHook ??= new Hook<MainTargetUiUpdate>(
-                    Common.Scanner.ScanText(
+                mainTargetUpdateHook ??= Hook<MainTargetUiUpdate>.FromAddress(
+                    Service.SigScanner.ScanText(
                         "40 55 57 41 56 48 83 EC 40 48 8B 6A 48 48 8B F9 4D 8B 70 40 48 85 ED 0F 84 ?? ?? ?? ?? 4D 85 F6 0F 84 ?? ?? ?? ?? 48 8B 45 20 48 89 74 24 ?? 4C 89 7C 24 ?? 44 0F B6 B9 ?? ?? ?? ?? 83 38 00 8B 70 08 0F 94 C0"),
                     new MainTargetUiUpdate(MainTargetUpdateDelegate));
                 
-                focusUpdateHook ??= new Hook<FocusUiUpdate>(
-                    Common.Scanner.ScanText("40 53 41 54 41 56 41 57 48 83 EC 78 4C 8B 7A 48"),
+                focusUpdateHook ??= Hook<FocusUiUpdate>.FromAddress(
+                    Service.SigScanner.ScanText("40 53 41 54 41 56 41 57 48 83 EC 78 4C 8B 7A 48"),
                     new FocusUiUpdate(FocusUpdateDelegate));
 
                 if (Enabled) partyUiUpdateHook?.Enable();
@@ -239,7 +242,7 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
         private void SetName(AtkTextNode* node, string payload)
         {
             if (node == null || payload == string.Empty) return;
-            Plugin.Common.WriteSeString(node->NodeText, payload);
+            Common.WriteSeString(node->NodeText, payload);
         }
 
         private void SetHp(AtkTextNode* node, MemberData member)
@@ -272,12 +275,12 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
                 se.Payloads.Add(new TextPayload("%"));
             }
 
-            Plugin.Common.WriteSeString(node->NodeText, se);
+            Common.WriteSeString(node->NodeText, se);
         }
 
         private string GetJobName(int id)
         {
-            if (id < 0 || id > 38) return "打开方式不对";
+            if (id < 0 || id > 40) return "打开方式不对";
             return Service.ClientState.ClientLanguage == ClientLanguage.English
                 ? Service.Data.Excel.GetSheet<Lumina.Excel.GeneratedSheets.ClassJob>().GetRow((uint) id)
                     .NameEnglish
@@ -396,14 +399,14 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
             SeString se = new(new List<Payload>());
             se.Payloads.Add(uiYellow);
             se.Payloads.Add(new TextPayload(shield.ToString()));
-            Plugin.Common.WriteSeString(node1->NodeText, se);
+            Common.WriteSeString(node1->NodeText, se);
             if (node1->FontSize != 12)
             {
                 node1->FontSize = 12;
                 node1->AlignmentFontType -= 2;
             }
 
-            Plugin.Common.WriteSeString(node2->NodeText, "");
+            Common.WriteSeString(node2->NodeText, "");
         }
 
         private void ResetMp()
@@ -471,8 +474,8 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
             try
             {
                 if (tTextNode == null || ttTextNode == null) return;
-                var tname = Plugin.Common.ReadSeString(tTextNode->NodeText.StringPtr).TextValue.Trim();
-                var ttname = Plugin.Common.ReadSeString(ttTextNode->NodeText.StringPtr).TextValue.Trim();
+                var tname = Common.ReadSeString(tTextNode->NodeText.StringPtr).TextValue.Trim();
+                var ttname = Common.ReadSeString(ttTextNode->NodeText.StringPtr).TextValue.Trim();
                 if (tname.Length >= 1)
                 {
                     var number = tname.Substring(0, 1);
@@ -513,7 +516,7 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
         {
             try
             {
-                SplitString(Plugin.Common.ReadSeString(focusTextNode->NodeText.StringPtr).ToString().Trim(), true,
+                SplitString(Common.ReadSeString(focusTextNode->NodeText.StringPtr).ToString().Trim(), true,
                     out var part1,
                     out var part2);
                 if (part2 != "")
@@ -587,3 +590,4 @@ namespace SimpleTweaksPlugin.Tweaks.UiAdjustment
         #endregion
     }
 }
+#endif
