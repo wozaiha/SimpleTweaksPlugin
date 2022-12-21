@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
@@ -9,12 +8,12 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
-using FFXIVClientStructs.Attributes;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using ImGuiScene;
-using SimpleTweaksPlugin.Helper;
+using SimpleTweaksPlugin.Utility;
 using Action = System.Action;
+using Addon = FFXIVClientStructs.Attributes.Addon;
 using AlignmentType = FFXIVClientStructs.FFXIV.Component.GUI.AlignmentType;
 
 #pragma warning disable 659
@@ -34,14 +33,14 @@ public unsafe class UIDebug : DebugHelper {
     private bool firstDraw = true;
     private bool elementSelectorActive = false;
     private int elementSelectorIndex = 0;
-    private float elementSelectorCountdown = 0;
-    private bool elementSelectorScrolled = false;
-    private int loadImageId = 0;
-    private int loadImageVersion = 0;
-    private ulong[] elementSelectorFind = {};
+    private static float elementSelectorCountdown = 0;
+    private static bool elementSelectorScrolled = false;
+    private static int loadImageId = 0;
+    private static int loadImageVersion = 0;
+    private static ulong[] elementSelectorFind = {};
     private AtkUnitBase* selectedUnitBase = null;
 
-    private const int UnitListCount = 18;
+    public const int UnitListCount = 18;
     private readonly bool[] selectedInList = new bool[UnitListCount];
     private readonly string[] listNames = new string[UnitListCount]{
         "Depth Layer 1",
@@ -171,27 +170,29 @@ public unsafe class UIDebug : DebugHelper {
         ImGui.GetIO().WantCaptureKeyboard = true;
         ImGui.GetIO().WantCaptureMouse = true;
         ImGui.GetIO().WantTextInput = true;
-        if (ImGui.IsKeyPressed((int)VirtualKey.ESCAPE)) {
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape)) {
             elementSelectorActive = false;
             FreeExclusiveDraw();
             return;
         }
             
-        ImGui.SetNextWindowPos(Vector2.Zero);
+        ImGuiHelpers.SetNextWindowPosRelativeMainViewport(Vector2.Zero);
         ImGui.SetNextWindowSize(ImGui.GetIO().DisplaySize);
         ImGui.SetNextWindowBgAlpha(0.3f);
+        ImGuiHelpers.ForceNextWindowMainViewport();
+        
         ImGui.Begin("ElementSelectorWindow", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar);
         var drawList = ImGui.GetWindowDrawList();
             
         var y = 100f;
         foreach (var s in new[]{"Select an Element", "Press ESCAPE to cancel"}) {
             var size = ImGui.CalcTextSize(s);
-            var x = ImGui.GetWindowContentRegionWidth() / 2f - size.X / 2;
+            var x = ImGuiExt.GetWindowContentRegionSize().X / 2f - size.X / 2;
             drawList.AddText(new Vector2(x, y), 0xFFFFFFFF, s);
             y += size.Y;
         }
             
-        var mousePos = ImGui.GetMousePos();
+        var mousePos = ImGui.GetMousePos() - ImGuiHelpers.MainViewport.Pos;
         var windows = GetAtkUnitBaseAtPosition(mousePos);
 
         ImGui.SetCursorPosX(100);
@@ -237,7 +238,7 @@ public unsafe class UIDebug : DebugHelper {
                 }
                     
                     
-                drawList.AddRectFilled(n.State.Position, n.State.SecondPosition, (uint) (nSelected ? 0x4400FFFF: 0x0000FF00));
+                drawList.AddRectFilled(n.State.Position + ImGuiHelpers.MainViewport.Pos, n.State.SecondPosition + ImGuiHelpers.MainViewport.Pos, (uint) (nSelected ? 0x4400FFFF: 0x0000FF00));
             }
             ImGui.Indent(-15);
         }
@@ -297,7 +298,7 @@ public unsafe class UIDebug : DebugHelper {
         }
     }
 
-    private Dictionary<string, Type> addonMapping = new Dictionary<string, Type>();
+    private static Dictionary<string, Type> addonMapping = new Dictionary<string, Type>();
         
         
     private List<NodeResult> GetAtkResNodeAtPosition(AtkUldManager UldManager, Vector2 position, bool noReverse = false) {
@@ -328,7 +329,7 @@ public unsafe class UIDebug : DebugHelper {
         return list;
     }
         
-    private void DrawUnitBase(AtkUnitBase* atkUnitBase) {
+    public static void DrawUnitBase(AtkUnitBase* atkUnitBase) {
 
         var isVisible = (atkUnitBase->Flags & 0x20) == 0x20;
         var addonName = Marshal.PtrToStringUTF8(new IntPtr(atkUnitBase->Name));
@@ -348,7 +349,7 @@ public unsafe class UIDebug : DebugHelper {
         }
 
 
-        ImGui.SameLine(ImGui.GetWindowContentRegionWidth() - 25);
+        ImGui.SameLine(ImGuiExt.GetWindowContentRegionSize().X - 25);
         if (ImGui.SmallButton("V")) {
             atkUnitBase->Flags ^= 0x20;
         }
@@ -460,7 +461,7 @@ public unsafe class UIDebug : DebugHelper {
     }
 
         
-    private void PrintNode(AtkResNode* node, bool printSiblings = true, string treePrefix = "", bool textOnly = false)
+    public static void PrintNode(AtkResNode* node, bool printSiblings = true, string treePrefix = "", bool textOnly = false)
     {
         if (node == null)
             return;
@@ -494,8 +495,25 @@ public unsafe class UIDebug : DebugHelper {
                 PrintNode(nextNode, false, "next ");
         }
     }
-        
-    private void PrintSimpleNode(AtkResNode* node, string treePrefix, bool textOnly = false)
+
+    private static Dictionary<uint, string> customNodeIds;
+
+    private static string NodeID(uint id, bool includeHashOnNoMatch = true) {
+        if (customNodeIds == null) {
+            customNodeIds = new Dictionary<uint, string>();
+            foreach (var f in typeof(CustomNodes).GetFields(BindingFlags.Static | BindingFlags.Public)) {
+                if (f.FieldType == typeof(int)) {
+                    var v = (int?) f.GetValue(null);
+                    if (v == null || customNodeIds.ContainsKey((uint)v.Value)) continue;
+                    customNodeIds.Add((uint) v.Value, f.Name);
+                }
+            }
+        }
+        var customNodeName = customNodeIds.ContainsKey(id) ? customNodeIds[id] : string.Empty;
+        return string.IsNullOrEmpty(customNodeName) ? (includeHashOnNoMatch ? $"#{id}" : $"{id}") : $"{customNodeName}#{id}";
+    }
+    
+    private static void PrintSimpleNode(AtkResNode* node, string treePrefix, bool textOnly = false)
     {
         bool popped = false;
         bool isVisible = (node->Flags & 0x10) == 0x10;
@@ -507,7 +525,7 @@ public unsafe class UIDebug : DebugHelper {
             ImGui.SetNextItemOpen(elementSelectorFind.Contains((ulong) node), ImGuiCond.Always);
         }
         if (textOnly) ImGui.SetNextItemOpen(false, ImGuiCond.Always);
-        if (ImGui.TreeNode($"{treePrefix} [#{node->NodeID}] {node->Type} Node (ptr = {(long)node:X})###{(long)node}"))
+        if (ImGui.TreeNode($"{treePrefix} [{NodeID(node->NodeID)}] {node->Type} Node (ptr = {(long)node:X})###{(long)node}"))
         {
             if (ImGui.IsItemHovered()) DrawOutline(node);
             if (isVisible && !textOnly)
@@ -712,7 +730,7 @@ public unsafe class UIDebug : DebugHelper {
             ImGui.PopStyleColor();
     }
 
-    private void PrintComponentNode(AtkResNode* node, string treePrefix, bool textOnly = false)
+    private static void PrintComponentNode(AtkResNode* node, string treePrefix, bool textOnly = false)
     {
         var compNode = (AtkComponentNode*)node;
 
@@ -731,7 +749,7 @@ public unsafe class UIDebug : DebugHelper {
             ImGui.SetNextItemOpen(elementSelectorFind.Contains((ulong) node), ImGuiCond.Always);
         }
         if (textOnly) ImGui.SetNextItemOpen(false, ImGuiCond.Always);
-        if (ImGui.TreeNode($"{treePrefix} [#{node->NodeID}] {objectInfo->ComponentType} Component Node (ptr = {(long)node:X}, component ptr = {(long)compNode->Component:X}) child count = {childCount}  ###{(long)node}"))
+        if (ImGui.TreeNode($"{treePrefix} [{NodeID(node->NodeID)}] {objectInfo->ComponentType} Component Node (ptr = {(long)node:X}, component ptr = {(long)compNode->Component:X}) child count = {childCount}  ###{(long)node}"))
         {
             if (ImGui.IsItemHovered()) DrawOutline(node);
             if (isVisible && !textOnly)
@@ -811,9 +829,9 @@ public unsafe class UIDebug : DebugHelper {
             ImGui.PopStyleColor();
     }
         
-    private void PrintResNode(AtkResNode* node)
+    private static void PrintResNode(AtkResNode* node)
     {
-        ImGui.Text($"NodeID: {node->NodeID}   Type: {node->Type}");
+        ImGui.Text($"NodeID: {NodeID(node->NodeID, false)}   Type: {node->Type}");
         ImGui.SameLine();
         if (ImGui.SmallButton($"T:Visible##{(ulong)node:X}")) {
             node->Flags ^= 0x10;
@@ -957,7 +975,7 @@ public unsafe class UIDebug : DebugHelper {
     }
         
         
-    private Vector2 GetNodePosition(AtkResNode* node) {
+    private static Vector2 GetNodePosition(AtkResNode* node) {
         var pos = new Vector2(node->X, node->Y);
         var par = node->ParentNode;
         while (par != null) {
@@ -968,7 +986,7 @@ public unsafe class UIDebug : DebugHelper {
         return pos;
     }
 
-    private Vector2 GetNodeScale(AtkResNode* node) {
+    private static Vector2 GetNodeScale(AtkResNode* node) {
         if (node == null) return new Vector2(1, 1);
         var scale = new Vector2(node->ScaleX, node->ScaleY);
         while (node->ParentNode != null) {
@@ -978,7 +996,7 @@ public unsafe class UIDebug : DebugHelper {
         return scale;
     }
 
-    private bool GetNodeVisible(AtkResNode* node) {
+    private static bool GetNodeVisible(AtkResNode* node) {
         if (node == null) return false;
         while (node != null) {
             if ((node->Flags & (short)NodeFlags.Visible) != (short)NodeFlags.Visible) return false;
@@ -987,7 +1005,7 @@ public unsafe class UIDebug : DebugHelper {
         return true;
     }
 
-    private void DrawOutline(AtkResNode* node) {
+    private static void DrawOutline(AtkResNode* node) {
         var position = GetNodePosition(node);
         var scale = GetNodeScale(node);
         var size = new Vector2(node->Width, node->Height) * scale;

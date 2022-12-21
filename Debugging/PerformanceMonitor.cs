@@ -2,13 +2,16 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using ImGuiNET;
-using SimpleTweaksPlugin.Helper;
 
 namespace SimpleTweaksPlugin.Debugging; 
 
 public class PerformanceMonitor : DebugHelper {
+    
+    public static bool DoFrameworkMonitor = false;
 
     public override void Draw() {
+        ImGui.Separator();
+        ImGui.Checkbox("Log Framework Events", ref DoFrameworkMonitor);
         Begin("PerformanceMonitor.Draw");
 
         if (ImGui.SmallButton("Reset All")) {

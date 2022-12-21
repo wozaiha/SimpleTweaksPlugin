@@ -6,7 +6,6 @@ using System.Text;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Utility;
 using ImGuiNET;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.Tweaks;
 using SimpleTweaksPlugin.TweakSystem;
 
@@ -148,8 +147,8 @@ namespace SimpleTweaksPlugin.Tweaks {
         public override void Enable() {
             Config = LoadConfig<Configs>() ?? PluginConfig.DisableClickTargeting ?? new Configs();
             
-            rightClickTargetHook ??= new Hook<ClickTarget>(Common.Scanner.ScanText("E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 85 C0 74 1B"), new ClickTarget(RightClickTargetDetour));
-            leftClickTargetHook ??= new Hook<ClickTarget>(Common.Scanner.ScanText("E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 16"), new ClickTarget(LeftClickTargetDetour));
+            rightClickTargetHook ??= new Hook<ClickTarget>(Service.SigScanner.ScanText("E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 85 C0 74 1B"), new ClickTarget(RightClickTargetDetour));
+            leftClickTargetHook ??= new Hook<ClickTarget>(Service.SigScanner.ScanText("E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 74 16"), new ClickTarget(LeftClickTargetDetour));
             if (Config.DisableRightClick || Config.UseNameFilter) rightClickTargetHook?.Enable();
             if (Config.DisableLeftClick || Config.UseNameFilter) leftClickTargetHook?.Enable();
             base.Enable();

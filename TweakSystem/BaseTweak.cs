@@ -8,6 +8,7 @@ using System.Reflection;
 using Dalamud.Plugin;
 using ImGuiNET;
 using Newtonsoft.Json;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.TweakSystem; 
 
@@ -22,6 +23,8 @@ public abstract class BaseTweak {
     public virtual string Key => GetType().Name;
 
     public abstract string Name { get; }
+
+    public virtual uint Version => 1;
 
     public string LocalizedName => LocString("Name", Name, "Tweak Name");
 
@@ -70,7 +73,7 @@ public abstract class BaseTweak {
             var minPos = ImGui.GetCursorPosX();
             var text = $"[{this.Key}]";
             var size = ImGui.CalcTextSize(text);
-            ImGui.SetCursorPosX(Math.Max(minPos, ImGui.GetWindowContentRegionWidth() - size.X));
+            ImGui.SetCursorPosX(Math.Max(minPos, ImGuiExt.GetWindowContentRegionSize().X - size.X));
             ImGui.TextDisabled(text);
             if (ImGui.IsItemHovered()) {
                 ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
@@ -81,10 +84,12 @@ public abstract class BaseTweak {
         }
     }
 
-    protected T LoadConfig<T>() where T : TweakConfig {
+    protected T LoadConfig<T>() where T : TweakConfig => LoadConfig<T>(this.Key);
+
+    protected T LoadConfig<T>(string key) where T : TweakConfig {
         try {
             var configDirectory = PluginInterface.GetPluginConfigDirectory();
-            var configFile = Path.Combine(configDirectory, this.Key + ".json");
+            var configFile = Path.Combine(configDirectory, key + ".json");
             if (!File.Exists(configFile)) return default;
             var jsonString = File.ReadAllText(configFile);
             return JsonConvert.DeserializeObject<T>(jsonString);
@@ -156,7 +161,7 @@ public abstract class BaseTweak {
             DrawCommon();
         }
 
-        if (hasChanged) ConfigChanged();
+        if (hasChanged && Enabled) ConfigChanged();
         return configTreeOpen;
     }
 
@@ -239,7 +244,7 @@ public abstract class BaseTweak {
             ImGui.TextWrapped($"{ex.StackTrace}");
         }
 
-        if (configChanged) {
+        if (configChanged && Enabled) {
             ConfigChanged();
         }
     }

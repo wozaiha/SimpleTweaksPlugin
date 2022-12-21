@@ -26,6 +26,12 @@ public class TweakProvider : IDisposable {
                 var tweak = (Tweak) Activator.CreateInstance(t)!;
                 tweak.InterfaceSetup(SimpleTweaksPlugin.Plugin, Service.PluginInterface, SimpleTweaksPlugin.Plugin.PluginConfig, this);
                 if (tweak.CanLoad) {
+                    var blacklistKey = tweak.Key;
+                    if (tweak.Version > 1) blacklistKey += $"::{tweak.Version}";
+                    if (SimpleTweaksPlugin.Plugin.PluginConfig.BlacklistedTweaks.Contains(blacklistKey)) {
+                        SimpleLog.Log("Skipping blacklisted tweak: " + tweak.Key);
+                        continue;
+                    }
                     tweak.Setup();
                     if (tweak.Ready && (SimpleTweaksPlugin.Plugin.PluginConfig.EnabledTweaks.Contains(t.Name) || tweak is SubTweakManager {AlwaysEnabled: true})) {
                         SimpleLog.Debug($"Enable: {t.Name}");
@@ -42,6 +48,7 @@ public class TweakProvider : IDisposable {
                 PluginLog.Error(ex, $"Failed loading tweak '{t.Name}'.");
             }
         }
+        SimpleTweaksPlugin.Plugin.PluginConfig.RefreshSearch();
     }
 
     public void UnloadTweaks() {
@@ -64,6 +71,7 @@ public class TweakProvider : IDisposable {
             }
         }
         Tweaks.Clear();
+        SimpleTweaksPlugin.Plugin.PluginConfig.RefreshSearch();
     }
 
 

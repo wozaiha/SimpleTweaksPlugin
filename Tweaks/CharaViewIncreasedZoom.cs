@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks; 
 
@@ -12,7 +12,7 @@ public unsafe class CharaViewIncreasedZoom : Tweak {
     private HookWrapper<CharaViewZoom> charaViewZoomHook;
 
     public override void Enable() {
-        charaViewZoomHook ??= Common.Hook<CharaViewZoom>("48 8B 41 20 48 85 C0 74 44", ZoomDetour);
+        charaViewZoomHook ??= Common.Hook<CharaViewZoom>("48 8B 41 20 48 85 C0 74 4C", ZoomDetour);
         charaViewZoomHook?.Enable();
         base.Enable();
     }
@@ -35,7 +35,7 @@ public unsafe class CharaViewIncreasedZoom : Tweak {
 
     private void ZoomDetour(CharaView* charaView, float delta) {
         if (charaView->Camera != null && charaView->Camera->AnotherCamera != null) {
-            charaView->Camera->AnotherCamera->Zoom += delta * (charaView->Camera->AnotherCamera->Zoom / 4);
+            charaView->Camera->AnotherCamera->Zoom += delta * (charaView->Camera->AnotherCamera->Zoom / 24);
             if (charaView->Camera->AnotherCamera->Zoom < MinZoom) charaView->Camera->AnotherCamera->Zoom = MinZoom;
             if (charaView->Camera->AnotherCamera->Zoom > MaxZoom) charaView->Camera->AnotherCamera->Zoom = MaxZoom;
         }

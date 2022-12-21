@@ -1,38 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Dalamud;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Game.Command;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ImGuiNET;
 using SimpleTweaksPlugin.Enums;
-using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Tweaks.AbstractTweaks;
+namespace SimpleTweaksPlugin.Tweaks; 
 
-namespace SimpleTweaksPlugin.Tweaks;
-
-public class ChrDirCommand : Tweak
-{
+public class ChrDirCommand : CommandTweak {
     public override string Name => "Character Directory Command";
     public override string Description => "Adds a command to open the directory when client side character data is stored.";
-
-    public override void Setup()
-    {
-        Ready = true;
-    }
+    protected override string Command => "chrdir";
+    protected override string HelpMessage => "Print your character save directory to chat. '/chrdir open' to open the directory in explorer.";
 
     private DalamudLinkPayload linkPayload;
 
     public override void Enable()
     {
         if (Enabled) return;
-        Service.Commands.AddHandler("/chrdir", new CommandInfo(CommandHandler) { ShowInHelp = true, HelpMessage = "Print your character save directory to chat. '/chrdir open' to open the directory in explorer." });
-
-        linkPayload = PluginInterface.AddChatLinkHandler((uint)LinkHandlerId.OpenFolderLink, OpenFolder);
-
-        Enabled = true;
+        linkPayload = PluginInterface.AddChatLinkHandler((uint) LinkHandlerId.OpenFolderLink, OpenFolder);
+        base.Enable();
     }
 
     private void OpenFolder(uint arg1, SeString arg2)
@@ -41,11 +32,9 @@ public class ChrDirCommand : Tweak
         Process.Start("explorer.exe", dir);
     }
 
-    private void CommandHandler(string command, string arguments)
-    {
-        var saveDir = Path.Combine(Service.ClientState.ClientLanguage == ClientLanguage.ChineseSimplified ? Process.GetCurrentProcess().MainModule.FileName.Replace("ffxiv_dx11.exe", "").Replace("ffxiv.exe", "") : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", "FINAL FANTASY XIV - A Realm Reborn", $"FFXIV_CHR{Service.ClientState.LocalContentId:X16}"); 
-        if (arguments == "open")
-        {
+    protected override unsafe void OnCommand(string arguments) {
+        var saveDir = Path.Combine(Framework.Instance()->UserPath, $"FFXIV_CHR{Service.ClientState.LocalContentId:X16}").Replace('/', '\\');
+        if (arguments == "open") {
             Process.Start("explorer.exe", saveDir);
             return;
         }
@@ -64,20 +53,12 @@ public class ChrDirCommand : Tweak
     }
 
     protected override DrawConfigDelegate DrawConfigTree => (ref bool _) => {
-        ImGui.TextDisabled("/chrdir");
-        ImGui.TextDisabled("/chrdir open");
+        ImGui.TextDisabled($"/{Command}");
+        ImGui.TextDisabled($"/{Command} open");
     };
 
-    public override void Disable()
-    {
-        PluginInterface.RemoveChatLinkHandler((uint)LinkHandlerId.OpenFolderLink);
-        Service.Commands.RemoveHandler("/chrdir");
-        Enabled = false;
-    }
-
-    public override void Dispose()
-    {
-        Enabled = false;
-        Ready = false;
+    public override void Disable() {
+        PluginInterface.RemoveChatLinkHandler((uint) LinkHandlerId.OpenFolderLink);
+        base.Disable();
     }
 }

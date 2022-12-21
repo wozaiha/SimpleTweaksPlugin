@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Game;
-using FFXIVClientStructs;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using FFXIVClientStructs.FFXIV.Component.GUI.ULD;
-using SimpleTweaksPlugin.Helper;
+using SimpleTweaksPlugin.Utility;
 using AlignmentType = FFXIVClientStructs.FFXIV.Component.GUI.AlignmentType;
 
 namespace SimpleTweaksPlugin.Tweaks.UiAdjustment; 
@@ -73,14 +70,14 @@ public unsafe class ImprovedWorldVisit : UiAdjustments.SubTweak {
         }
             
         public void DoCleanup(short? x, short? y) {
-            UiHelper.Hide(InformationBox);
-            UiHelper.Hide(InformationBoxBorder);
-            UiHelper.Hide(WorldInfoHeader);
-            UiHelper.Hide(HomeWorldContainer);
-            UiHelper.Hide(CurrentWorldHeader);
-            UiHelper.Hide(CurrentWorldHeaderUnderline);
-            UiHelper.Hide(WorldListHeader);
-            UiHelper.Hide(CurrentWorldContainer);
+            InformationBox->AtkResNode.ToggleVisibility(false);
+            InformationBoxBorder->AtkResNode.ToggleVisibility(false);
+            WorldInfoHeader->AtkResNode.ToggleVisibility(false);
+            HomeWorldContainer->ToggleVisibility(false);
+            CurrentWorldHeader->AtkResNode.ToggleVisibility(false);
+            CurrentWorldHeaderUnderline->AtkResNode.ToggleVisibility(false);
+            WorldListHeader->AtkResNode.ToggleVisibility(false);
+            CurrentWorldContainer->ToggleVisibility(false);
             UiHelper.SetSize(CurrentWorldContainer, null, 24);
             UiHelper.SetSize(RootNode, 250, null);
             UiHelper.SetWindowSize(WindowComponent, 250, 300);
@@ -88,8 +85,8 @@ public unsafe class ImprovedWorldVisit : UiAdjustments.SubTweak {
             UiHelper.SetPosition(CurrentWorldContainer, 20, 0);
             UiHelper.SetPosition(CurrentWorldName, 28, 0);
             UiHelper.SetSize(CurrentWorldName, null, 24);
-            UiHelper.Hide(CurrentWorldHeader);
-            UiHelper.Hide(CurrentWorldHeaderUnderline);
+            CurrentWorldHeader->AtkResNode.ToggleVisibility(false);
+            CurrentWorldHeaderUnderline->AtkResNode.ToggleVisibility(false);
 
             CurrentWorldName->AlignmentFontType = (byte)AlignmentType.Left;
             CurrentWorldName->TextColor = new ByteColor() {A = 255, R = 255, G = 255, B = 255 };
@@ -146,7 +143,7 @@ public unsafe class ImprovedWorldVisit : UiAdjustments.SubTweak {
                 
             UiHelper.SetWindowSize(WindowComponent, null, (ushort) (44 + (c + 3) * 24));
             UiHelper.SetSize(RootNode, null,  (ushort)(44 + (c + 3) * 24));
-            UiHelper.Show(CurrentWorldContainer);
+            CurrentWorldContainer->ToggleVisibility(true);
         }
     }
 

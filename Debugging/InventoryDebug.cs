@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using ImGuiNET;
-using SimpleTweaksPlugin.Enums;
-using SimpleTweaksPlugin.GameStructs;
-using SimpleTweaksPlugin.Helper;
+using Lumina.Excel.GeneratedSheets;
 
 namespace SimpleTweaksPlugin.Debugging; 
 
@@ -11,7 +10,7 @@ public unsafe class InventoryDebug : DebugHelper {
     private InventoryType inventoryType;
 
     public override void Draw() {
-        DebugManager.ClickToCopyText($"{Common.InventoryManagerAddress.ToInt64():X}");
+        DebugManager.ClickToCopyText($"{(ulong)InventoryManager.Instance():X}");
         if (ImGui.BeginTabBar("inventoryDebuggingTabs")) {
             if (ImGui.BeginTabItem("Container/Slot")) {
                 ImGui.PushItemWidth(200);
@@ -24,8 +23,8 @@ public unsafe class InventoryDebug : DebugHelper {
                     }
                     ImGui.EndCombo();
                 }
-                    
-                var container = Common.GetContainer(inventoryType); 
+
+                var container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
 
                 ImGui.PopItemWidth();
                     
@@ -40,13 +39,12 @@ public unsafe class InventoryDebug : DebugHelper {
                     DebugManager.PrintOutObject(*container, (ulong) container, new List<string>());
 
                     if (ImGui.TreeNode("Items##containerItems")) {
-                            
-                        for (var i = 0; i < container->SlotCount; i++) {
-                            var item = container->Items[i];
-                            var itemAddr = ((ulong) container->Items) + (ulong)sizeof(InventoryItem) * (ulong)i;
-                            DebugManager.ClickToCopyText($"{itemAddr:X}");
+                        for (var i = 0; i < container->Size; i++) {
+                            var item = container->GetInventorySlot(i);
+                            DebugManager.ClickToCopy(item);
                             ImGui.SameLine();
-                            DebugManager.PrintOutObject(item, (ulong) &item, new List<string> {$"Items[{i}]"},false, $"[{i:00}] {item.Item?.Name ?? "<Not Found>"}" );
+                            var itemName = item->ItemID == 0 ? string.Empty : Service.Data.Excel.GetSheet<Item>()?.GetRow(item->ItemID)?.Name?.RawString;
+                            DebugManager.PrintOutObject(*item, (ulong) item, new List<string> {$"Items[{i}]"},false, $"[{i:00}] {itemName ?? "<Not Found>"}" );
                         }
                         ImGui.TreePop();
                     }

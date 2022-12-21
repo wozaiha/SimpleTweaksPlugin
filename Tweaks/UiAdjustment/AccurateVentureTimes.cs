@@ -7,8 +7,8 @@ using Dalamud.Game;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks.UiAdjustment; 
 
@@ -38,7 +38,7 @@ public unsafe class AccurateVentureTimes : UiAdjustments.SubTweak {
     public override void Enable() {
         Config = LoadConfig<Configs>() ?? new Configs();
         replacementUpdateRetainerDelegate = UpdateRetainerLineDetour;
-        updateRetainerPointer = (void*) Common.Scanner.ScanText("40 53 56 41 56 48 83 EC 30 48 8B B1");
+        updateRetainerPointer = (void*) Service.SigScanner.ScanText("40 53 56 41 56 48 83 EC 30 48 8B B1");
         updateRetainer = Marshal.GetDelegateForFunctionPointer<UpdateRetainerDelegate>(new IntPtr(updateRetainerPointer));
         addonSetupHook ??= Common.Hook("E8 ?? ?? ?? ?? 41 B1 1E", new AddonSetupDelegate(SetupDetour));
         addonSetupHook?.Enable();
@@ -67,14 +67,14 @@ public unsafe class AccurateVentureTimes : UiAdjustments.SubTweak {
         try {
             var addon = Common.GetUnitBase("RetainerList");
             if (addon == null) return false;
-            var listNode = (AtkComponentNode*)addon->GetNodeById(24);
+            var listNode = (AtkComponentNode*)addon->GetNodeById(27);
             if (listNode == null || (ushort)listNode->AtkResNode.Type < 1000) return false;
             var retainerManager = RetainerManager.Instance();
             for (uint i = 0; i < 10; i++) {
                 var retainer = retainerManager->GetRetainerBySortedIndex(i);
 
                 if (retainer->VentureComplete != 0) {
-                    var renderer = Common.GetNodeByID<AtkComponentNode>(listNode->Component->UldManager, i == 0 ? 4U : 41000U + i, (NodeType) 1011);
+                    var renderer = Common.GetNodeByID<AtkComponentNode>(&listNode->Component->UldManager, i == 0 ? 4U : 41000U + i, (NodeType) 1011);
                     if (renderer == null || !renderer->AtkResNode.IsVisible) continue;
                     var ventureText = (AtkTextNode*) renderer->Component->UldManager.SearchNodeById(12);
                     var cTime = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.GetServerTime();

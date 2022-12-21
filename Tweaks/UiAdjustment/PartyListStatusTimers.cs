@@ -8,7 +8,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
-using SimpleTweaksPlugin.Helper;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks.UiAdjustment; 
 
@@ -54,6 +54,8 @@ public unsafe class PartyListStatusTimers : UiAdjustments.SubTweak {
         private ushort lastCountdown;
         private readonly Stopwatch timer = new Stopwatch();
     }
+    
+    private RecolorOwnStatusTimers recolorOwnStatusTimers;
 
     private delegate void UpdatePartyListStatusEffects(void* agentHud, NumberArrayData* numberArrayData, StringArrayData* stringArrayData, PartyStatus* statusList, int statusCount, int startIndex, int a7, int a8, int a9);
 
@@ -129,8 +131,6 @@ public unsafe class PartyListStatusTimers : UiAdjustments.SubTweak {
     }
 
     private void Update(bool reset = false) {
-
-
         var partyList = Common.GetUnitBase<AddonPartyList>();
         if (partyList == null) return;
 
@@ -141,6 +141,15 @@ public unsafe class PartyListStatusTimers : UiAdjustments.SubTweak {
                 var agentHud = uiModule->GetAgentModule()->GetAgentByInternalID(4);
                 updateSlotHook.Original(agentHud, atkArrayDataHolder.NumberArrays[4], atkArrayDataHolder.StringArrays[3], objIds[i].Value, updateValues[i].Value, i);
             }
+        }
+        
+        recolorOwnStatusTimers ??= Plugin.GetTweakById("UiAdjustments@RecolorOwnStatusTimers") as RecolorOwnStatusTimers;
+        
+        var selfColor = new Vector4(0xC9, 0xFF, 0xFE, 0xFF);
+        var selfEdgeColor = new Vector4(0x0A, 0x5F, 0x24, 0xFF);
+        if (recolorOwnStatusTimers?.Enabled ?? false) {
+            selfColor = recolorOwnStatusTimers.Config.OwnStatusColor * 255f;
+            selfEdgeColor = recolorOwnStatusTimers.Config.OwnStatusEdgeColor * 255f;
         }
 
         for (var pi = 0; pi < 8; pi++) {
@@ -224,12 +233,15 @@ public unsafe class PartyListStatusTimers : UiAdjustments.SubTweak {
                 } else {
                     timerNode->AtkResNode.ToggleVisibility(true);
 
-                    timerNode->TextColor.R = (byte) (statusCache.IsFromLocalPlayer ? 0xC9 : 0xFF);
-                    timerNode->TextColor.B = (byte) (statusCache.IsFromLocalPlayer ? 0xFE : 0xFF);
+                    timerNode->TextColor.R = (byte) (statusCache.IsFromLocalPlayer ? selfColor.X : 0xFF);
+                    timerNode->TextColor.G = (byte) (statusCache.IsFromLocalPlayer ? selfColor.Y : 0xFF);
+                    timerNode->TextColor.B = (byte) (statusCache.IsFromLocalPlayer ? selfColor.Z : 0xFF);
+                    timerNode->TextColor.A = (byte) (statusCache.IsFromLocalPlayer ? selfColor.W : 0xFF);
 
-                    timerNode->EdgeColor.R = (byte) (statusCache.IsFromLocalPlayer ? 0x0A : 0x33);
-                    timerNode->EdgeColor.G = (byte) (statusCache.IsFromLocalPlayer ? 0x5F : 0x33);
-                    timerNode->EdgeColor.B = (byte) (statusCache.IsFromLocalPlayer ? 0x24 : 0x33);
+                    timerNode->EdgeColor.R = (byte) (statusCache.IsFromLocalPlayer ? selfEdgeColor.X : 0x33);
+                    timerNode->EdgeColor.G = (byte) (statusCache.IsFromLocalPlayer ? selfEdgeColor.Y : 0x33);
+                    timerNode->EdgeColor.B = (byte) (statusCache.IsFromLocalPlayer ? selfEdgeColor.Z : 0x33);
+                    timerNode->EdgeColor.A = (byte) (statusCache.IsFromLocalPlayer ? selfEdgeColor.W : 0xFF);
                     switch (statusCache.Countdown) {
                         case > 3600:
                             timerNode->SetText($"{(int)statusCache.Countdown/3600}h");

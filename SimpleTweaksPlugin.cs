@@ -10,9 +10,9 @@ using System.Reflection;
 using Dalamud;
 using Dalamud.Game;
 using Dalamud.Interface.Internal.Notifications;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
 using SimpleTweaksPlugin.Debugging;
+using SimpleTweaksPlugin.Utility;
 using XivCommon;
 #if DEBUG
 using System.Runtime.CompilerServices;
@@ -34,9 +34,7 @@ namespace SimpleTweaksPlugin {
         private bool drawConfigWindow = false;
 
         public string AssemblyLocation { get; private set; } = Assembly.GetExecutingAssembly().Location;
-
-        internal Common Common;
-
+        
         public static SimpleTweaksPlugin Plugin { get; private set; }
 
         private CultureInfo setCulture = null;
@@ -72,15 +70,15 @@ namespace SimpleTweaksPlugin {
                 t.Dispose();
             }
             TweakProviders.Clear();
-            #if DEBUG
             DebugManager.Dispose();
-            #endif
             foreach (var hook in Common.HookList.Where(hook => !hook.IsDisposed)) {
                 if (hook.IsEnabled) hook.Disable();
                 hook.Dispose();
             }
             Common.HookList.Clear();
+            Common.Shutdown();
             this.XivCommon.Dispose();
+            SimpleEvent.Destroy();
         }
 
         public int UpdateFrom = -1;
@@ -99,20 +97,35 @@ namespace SimpleTweaksPlugin {
             this.PluginConfig.Init(this, pluginInterface);
 
             IconManager = new IconManager(pluginInterface);
-            this.XivCommon = new XivCommonBase(Hooks.ContextMenu);
+            this.XivCommon = new XivCommonBase();
             SetupLocalization();
 
             UiHelper.Setup(Service.SigScanner);
 
             DebugManager.SetPlugin(this);
 
-            Common = new Common();
+            Common.Setup();
 
             PluginInterface.UiBuilder.Draw += this.BuildUI;
             pluginInterface.UiBuilder.OpenConfigUi += OnOpenConfig;
 
             SetupCommands();
 
+            try {
+                // Update Tweak Blacklist
+                using var webClient = new System.Net.WebClient();
+                var blacklistedTweaksString = webClient.DownloadString("https://raw.githubusercontent.com/Caraxi/SimpleTweaksPlugin/main/tweakBlacklist.txt");
+                SimpleLog.Log("Tweak Blacklist:\n" + blacklistedTweaksString);
+                var blacklistedTweaks = new List<string>();
+                foreach (var l in blacklistedTweaksString.Split("\n")) {
+                    if (string.IsNullOrWhiteSpace(l)) continue;
+                    blacklistedTweaks.Add(l.Trim());
+                }
+                PluginConfig.BlacklistedTweaks = blacklistedTweaks;
+            } catch {
+                //
+            }
+            
             var simpleTweakProvider = new TweakProvider(Assembly.GetExecutingAssembly());
             simpleTweakProvider.LoadTweaks();
             TweakProviders.Add(simpleTweakProvider);
@@ -123,8 +136,10 @@ namespace SimpleTweaksPlugin {
 
 
 #if DEBUG
-            DebugManager.Enabled = false;
-            drawConfigWindow = false;
+            if (!PluginConfig.DisableAutoOpen) {
+                DebugManager.Enabled = true;
+                drawConfigWindow = true;
+            }
 #endif
             DebugManager.Reload();
 
@@ -279,6 +294,19 @@ namespace SimpleTweaksPlugin {
             return null;
         }
 
+        public T GetTweak<T>(IEnumerable<BaseTweak>? tweakList = null) where T : BaseTweak {
+            tweakList ??= Tweaks;
+            foreach (var t in tweakList) {
+                if (t is T tweak) return tweak;
+                if (t is SubTweakManager stm) {
+                    var fromSub = GetTweak<T>(stm.GetTweakList());
+                    if (fromSub != null) return fromSub;
+                }
+            }
+            return null;
+        }
+        
+
         public void SaveAllConfig() {
             foreach (var tp in TweakProviders.Where(tp => !tp.IsDisposed)) {
                 foreach (var t in tp.Tweaks) {
@@ -352,7 +380,7 @@ namespace SimpleTweaksPlugin {
                 }
             }
 
-            if (Service.PluginInterface.IsDebugging && Service.PluginInterface.IsDev) {
+            if (Service.PluginInterface.IsDevMenuOpen && Service.PluginInterface.IsDev) {
                 if (ImGui.BeginMainMenuBar()) {
                     if (ImGui.MenuItem("Simple Tweaks")) {
                         if (ImGui.GetIO().KeyShift) {
@@ -452,6 +480,7 @@ namespace SimpleTweaksPlugin {
         }
 
         public void LoadCustomProvider(string path) {
+            if (path.StartsWith("!")) return;
             if (!File.Exists(path)) return;
             TweakProviders.RemoveAll(t => t.IsDisposed);
             var tweakProvider = new CustomTweakProvider(path);

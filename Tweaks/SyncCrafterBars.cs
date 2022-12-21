@@ -4,6 +4,7 @@ using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks; 
 
@@ -25,7 +26,7 @@ public class SyncCrafterBars : Tweak {
         ImGui.Text("Select bars to sync between jobs.");
         ImGui.Indent();
 
-        var columns = (int) (ImGui.GetWindowContentRegionWidth() / (150f * ImGui.GetIO().FontGlobalScale));
+        var columns = (int) (ImGuiExt.GetWindowContentRegionSize().X / (150f * ImGui.GetIO().FontGlobalScale));
 
         ImGui.Columns(columns, "hotbarColumns", false);
         for (var i = 0; i < Config.StandardBars.Length; i++) {
@@ -53,6 +54,7 @@ public class SyncCrafterBars : Tweak {
 
     public void PerformCrafterBarSync(uint copyFrom) {
         if (Service.ClientState.LocalPlayer == null) return;
+        if (Service.ClientState.IsPvP) return;
         if (!crafterJobs.Contains(copyFrom)) return;
         var copyJob = classJobSheet.GetRow(copyFrom);
         if (copyJob == null) return;

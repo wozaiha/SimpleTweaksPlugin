@@ -1,10 +1,9 @@
 ﻿using System;
 using Dalamud.Game;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.Tweaks.UiAdjustment;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin {
     public partial class UiAdjustmentsConfig {

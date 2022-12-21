@@ -8,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SimpleTweaksPlugin.Debugging;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin; 
 
@@ -27,9 +27,11 @@ public partial class SimpleTweaksPluginConfig : IPluginConfiguration {
     public List<string> EnabledTweaks = new List<string>();
     public List<string> HiddenTweaks = new List<string>();
     public List<string> CustomProviders = new List<string>();
+    public List<string> BlacklistedTweaks = new List<string>();
 
     public bool HideKofi;
     public bool ShowExperimentalTweaks;
+    public bool DisableAutoOpen;
 
     public bool ShowTweakDescriptions = true;
     public bool ShowTweakIDs;
@@ -185,7 +187,9 @@ public partial class SimpleTweaksPluginConfig : IPluginConfiguration {
                 
             foreach (var t in searchResults) {
                 if (HiddenTweaks.Contains(t.Key) && !t.Enabled) continue;
-                DrawTweakConfig(t, ref changed);
+                var tweakConfigChanged = false;
+                DrawTweakConfig(t, ref tweakConfigChanged);
+                changed |= tweakConfigChanged;
             }
                 
             ImGui.EndChild();
@@ -245,6 +249,10 @@ public partial class SimpleTweaksPluginConfig : IPluginConfiguration {
                     ImGui.Separator();
                     if (ImGui.Checkbox(Loc.Localize("General Options / Show Tweak IDs", "Show tweak IDs."), ref ShowTweakIDs)) Save();
                     ImGui.Separator();
+                    #if DEBUG
+                    if (ImGui.Checkbox("Disable Auto Open", ref DisableAutoOpen)) Save();
+                    ImGui.Separator();
+                    #endif
 
                     if (Loc.DownloadError != null) {
                         ImGui.TextColored(new Vector4(1, 0, 0, 1), Loc.DownloadError.ToString());
@@ -427,8 +435,31 @@ public partial class SimpleTweaksPluginConfig : IPluginConfiguration {
                                 plugin.LoadCustomProvider(CustomProviders[i]);
                                 Loc.ClearCache();
                             }
+
                             ImGui.SameLine();
-                            ImGui.Text(CustomProviders[i]);
+                            var enabled = !CustomProviders[i].StartsWith("!");
+                            if (ImGui.Checkbox($"###customProvider_{i}", ref enabled)) {
+
+                                foreach (var tp in SimpleTweaksPlugin.Plugin.TweakProviders) {
+                                    if (tp.IsDisposed) continue;
+                                    if (tp is not CustomTweakProvider ctp) continue;
+                                    if (ctp.AssemblyPath == CustomProviders[i]) {
+                                        ctp.Dispose();
+                                    }
+                                    DebugManager.Reload();
+                                }
+                                
+                                if (enabled) {
+                                    if (CustomProviders[i].StartsWith("!")) CustomProviders[i] = CustomProviders[i].TrimStart('!');
+                                    plugin.LoadCustomProvider(CustomProviders[i]);
+                                } else {
+                                    if (!CustomProviders[i].StartsWith("!")) CustomProviders[i] = "!" + CustomProviders[i];
+                                }
+                                
+                                Save();
+                            }
+                            ImGui.SameLine();
+                            ImGui.Text(CustomProviders[i].TrimStart('!'));
                         }
 
                         if (deleteCustomProvider != null) {
@@ -475,4 +506,6 @@ public partial class SimpleTweaksPluginConfig : IPluginConfiguration {
             
         return drawConfig;
     }
+
+    public void RefreshSearch() => lastSearchInput = string.Empty;
 }

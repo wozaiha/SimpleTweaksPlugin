@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Conditions;
-using SimpleTweaksPlugin.Helper;
+using Dalamud.Hooking;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks; 
 

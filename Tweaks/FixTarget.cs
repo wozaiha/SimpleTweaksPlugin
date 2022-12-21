@@ -5,8 +5,8 @@ using Dalamud;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.ClientState.Objects.Types;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 using GameObjectStruct = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 
 namespace SimpleTweaksPlugin.Tweaks; 
@@ -28,13 +28,13 @@ public class FixTarget : Tweak {
             _ => null
         };
 
-        Service.Chat.ChatMessage += OnChatMessage;
+        Service.Chat.CheckMessageHandled += OnChatMessage;
 
         base.Enable();
     }
 
     public override void Disable() {
-        Service.Chat.ChatMessage -= OnChatMessage;
+        Service.Chat.CheckMessageHandled -= OnChatMessage;
         base.Disable();
     }
 

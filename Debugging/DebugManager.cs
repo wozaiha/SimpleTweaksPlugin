@@ -11,11 +11,12 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using FFXIVClientStructs.Attributes;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using Lumina.Excel;
 using SimpleTweaksPlugin.Debugging;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin {
     public partial class SimpleTweaksPluginConfig {
@@ -310,8 +311,16 @@ namespace SimpleTweaksPlugin.Debugging {
 
         private static unsafe void PrintOutValue(ulong addr, List<string> path, Type type, object value, MemberInfo member) {
             try {
+
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)) {
+                    value = type.GetMethod("ToArray")?.Invoke(value, null);
+                    type = value.GetType();
+                }
+                
                 var valueParser = member.GetCustomAttribute(typeof(ValueParser));
-                var fieldOffset = member.GetCustomAttribute(typeof(FieldOffsetAttribute));
+                var fixedBuffer = (FixedBufferAttribute) member.GetCustomAttribute(typeof(FixedBufferAttribute));
+                var fixedArray = (FixedArrayAttribute)member.GetCustomAttribute(typeof(FixedArrayAttribute));
+                
                 if (valueParser is ValueParser vp) {
                     vp.ImGuiPrint(type, value, member, addr);
                     return;
@@ -356,6 +365,98 @@ namespace SimpleTweaksPlugin.Debugging {
                         }
 
 
+                    } else if (fixedBuffer != null) {
+                        
+                        
+                        if (fixedArray != null) {
+
+
+                            if (fixedArray.Type == typeof(string) && fixedArray.Count == 1) {
+
+                                
+                                var text = Marshal.PtrToStringUTF8((IntPtr)addr);
+                                if (text != null) {
+                                    ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
+                                    ImGui.TextDisabled("\"");
+                                    ImGui.SameLine();
+                                    ImGui.Text(text);
+                                    ImGui.SameLine();
+                                    ImGui.PopStyleVar();
+                                    
+                                    ImGui.TextDisabled("\"");
+                                } else {
+                                    ImGui.TextDisabled("null");
+                                }
+                            } else {
+                                if (ImGui.TreeNode($"Fixed {fixedArray.Type.Name} Array##{member.Name}-{addr}-{string.Join("-", path)}")) {
+
+                                    var arrAddr = (IntPtr) addr;
+                                    for (var i = 0; i < fixedArray.Count; i++) {
+                                        var arrObj = Marshal.PtrToStructure(arrAddr, fixedArray.Type);
+                                        PrintOutObject(arrObj, (ulong)arrAddr.ToInt64(), new List<string>(path) { $"_arrValue_{i}" }, false, $"[{i}] {arrObj}");
+                                        arrAddr += Marshal.SizeOf(fixedArray.Type);
+                                    }
+
+                                    ImGui.TreePop();
+                                }
+                            }
+                            
+                        } else {
+                        
+                            if (ImGui.TreeNode($"Fixed {fixedBuffer.ElementType.Name} Buffer##{member.Name}-{addr}-{string.Join("-", path)}")) {
+                                var display = true;
+                                var child = false;
+                                if (fixedBuffer.ElementType == typeof(byte) && fixedBuffer.Length > 0x80) {
+                                    display = ImGui.BeginChild($"scrollBuffer##{member.Name}-{addr}-{string.Join("-", path)}", new Vector2(ImGui.GetTextLineHeight() * 30, ImGui.GetTextLineHeight() * 8), true);
+                                    child = true;
+                                }
+
+                                if (display) {
+                                    var sX = ImGui.GetCursorPosX();
+                                    for (uint i = 0; i < fixedBuffer.Length; i += 1) {
+                                        if (fixedBuffer.ElementType == typeof(byte)) {
+                                            var v = *(byte*)(addr + i);
+                                            if (i != 0 && i % 16 != 0) ImGui.SameLine();
+                                            ImGui.SetCursorPosX(sX + ImGui.CalcTextSize(ImGui.GetIO().KeyShift?"0000":"000").X * (i % 16));
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v:000}" : $"{v:X2}");
+                                        } else if (fixedBuffer.ElementType == typeof(short)) {
+                                            var v = *(short*)(addr + i * 2);
+                                            if (i != 0 && i % 8 != 0) ImGui.SameLine();
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v:000000}" : $"{v:X4}");
+                                        } else if (fixedBuffer.ElementType == typeof(ushort)) {
+                                            var v = *(ushort*)(addr + i * 2);
+                                            if (i != 0 && i % 8 != 0) ImGui.SameLine();
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v:00000}" : $"{v:X4}");
+                                        }  else if (fixedBuffer.ElementType == typeof(int)) {
+                                            var v = *(int*)(addr + i * 4);
+                                            if (i != 0 && i % 4 != 0) ImGui.SameLine();
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v:0000000000}" : $"{v:X8}");
+                                        }  else if (fixedBuffer.ElementType == typeof(uint)) {
+                                            var v = *(uint*)(addr + i * 4);
+                                            if (i != 0 && i % 4 != 0) ImGui.SameLine();
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v:000000000}" : $"{v:X8}");
+                                        } else if (fixedBuffer.ElementType == typeof(long)) {
+                                            var v = *(long*)(addr + i * 8);
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v}" : $"{v:X16}");
+                                        } else if (fixedBuffer.ElementType == typeof(ulong)) {
+                                            var v = *(ulong*)(addr + i * 8);
+                                            ImGui.Text(ImGui.GetIO().KeyShift ? $"{v}" : $"{v:X16}");
+                                        } else {
+                                            var v = *(byte*)(addr + i);
+                                            if (i != 0 && i % 16 != 0) ImGui.SameLine();
+                                            ImGui.TextDisabled(ImGui.GetIO().KeyShift ? $"{v:000}" : $"{v:X2}");
+                                        }
+          
+                                    }
+                                }
+
+                                if (child) {
+                                    ImGui.EndChild();
+                                }
+                                
+                                ImGui.TreePop();
+                            }
+                        }
                     } else if (!type.IsPrimitive) {
                         switch (value) {
                             case ILazyRow ilr:
@@ -447,7 +548,7 @@ namespace SimpleTweaksPlugin.Debugging {
                 }
 
             }
-
+            
             var pushedColor = 0;
             var openedNode = false;
             try {
@@ -467,20 +568,55 @@ namespace SimpleTweaksPlugin.Debugging {
                 }
 
                 headerText ??= $"{obj}";
+                
+
+
 
                 if (ImGui.TreeNode($"{headerText}##print-obj-{addr:X}-{string.Join("-", path)}")) {
+
+                    var layoutKind = obj.GetType().StructLayoutAttribute?.Value ?? LayoutKind.Sequential;
+                    var offsetAddress = 0UL;
                     openedNode = true;
                     ImGui.PopStyleColor();
                     pushedColor--;
+                    
                     foreach (var f in obj.GetType().GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance)) {
 
+                        if (f.IsStatic) {
+                            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.75f, 1f), "static");
+                            ImGui.SameLine();
+                        } else {
+                            if (layoutKind == LayoutKind.Explicit) {
+                                if (f.GetCustomAttribute(typeof(FieldOffsetAttribute)) is FieldOffsetAttribute o) {
+                                    offsetAddress = (ulong)o.Value;
+                                }
+                            }
+                        
+                            ImGui.PushStyleColor(ImGuiCol.Text, 0xFF888888);
+                            ClickToCopyText($"[0x{offsetAddress:X}]", $"{(addr + offsetAddress):X}");
+                            ImGui.PopStyleColor();
+                            ImGui.SameLine();
+                        }
+                        
+                        
+                        
                         var fixedBuffer = (FixedBufferAttribute) f.GetCustomAttribute(typeof(FixedBufferAttribute));
                         if (fixedBuffer != null) {
+                            var fixedArray = (FixedArrayAttribute)f.GetCustomAttribute(typeof(FixedArrayAttribute));
                             ImGui.Text($"fixed");
                             ImGui.SameLine();
-                            ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{fixedBuffer.ElementType.Name}[0x{fixedBuffer.Length:X}]");
+                            if (fixedArray != null) {
+                                if (fixedArray.Type == typeof(string) && fixedArray.Count == 1) {
+                                    ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{fixedArray.Type.Name}");
+                                } else {
+                                    ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{fixedArray.Type.Name}[{fixedArray.Count:X}]");
+                                }
+                                
+                            } else {
+                                ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{fixedBuffer.ElementType.Name}[0x{fixedBuffer.Length:X}]");
+                            }
                         } else {
-
+                            
                             if (f.FieldType.IsArray) {
                                 var arr = (Array) f.GetValue(obj);
                                 ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{f.FieldType.GetElementType()?.Name ?? f.FieldType.Name}[{arr.Length}]");
@@ -494,10 +630,20 @@ namespace SimpleTweaksPlugin.Debugging {
                         ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1), $"{f.Name}: ");
                         ImGui.SameLine();
 
-                        PrintOutValue(addr, new List<string>(path) { f.Name }, f.FieldType, f.GetValue(obj), f);
+
+                        if (fixedBuffer != null) {
+                            PrintOutValue(addr + offsetAddress, new List<string>(path) { f.Name }, f.FieldType, f.GetValue(obj), f);
+                        } else {
+                            PrintOutValue(addr + offsetAddress, new List<string>(path) { f.Name }, f.FieldType, f.GetValue(obj), f);
+                        }
+
+                        if (layoutKind == LayoutKind.Sequential && f.IsStatic == false) {
+                            offsetAddress += (ulong)Marshal.SizeOf(f.FieldType);
+                        }
                     }
 
                     foreach (var p in obj.GetType().GetProperties()) {
+                        
                         if (p.PropertyType.IsGenericType) {
                             var gTypeName = string.Join(',', p.PropertyType.GetGenericArguments().Select(gt => gt.Name));
                             var baseName = p.PropertyType.Name.Split('`')[0];
@@ -510,7 +656,13 @@ namespace SimpleTweaksPlugin.Debugging {
                         ImGui.TextColored(new Vector4(0.2f, 0.6f, 0.4f, 1), $"{p.Name}: ");
                         ImGui.SameLine();
 
-                        PrintOutValue(addr, new List<string>(path) { p.Name }, p.PropertyType, p.GetValue(obj), p);
+                        if (p.PropertyType.IsByRefLike || p.GetMethod.GetParameters().Length > 0) {
+                            ImGui.TextDisabled("Unable to display");
+                        } else {
+                            PrintOutValue(addr, new List<string>(path) { p.Name }, p.PropertyType, p.GetValue(obj), p);
+                        }
+                        
+                        
                     }
 
                     openedNode = false;
@@ -527,5 +679,30 @@ namespace SimpleTweaksPlugin.Debugging {
             if (pushedColor > 0) ImGui.PopStyleColor(pushedColor);
 
         }
+
+        public static unsafe void PrintAddress(void* address) {
+            var ulongAddress = (ulong)address;
+            
+            try {
+                if (endModule == 0 && beginModule == 0) {
+                    try {
+                        beginModule = (ulong)Process.GetCurrentProcess().MainModule.BaseAddress.ToInt64();
+                        endModule = (beginModule + (ulong)Process.GetCurrentProcess().MainModule.ModuleMemorySize);
+                    } catch {
+                        endModule = 1;
+                    }
+                }
+            } catch { }
+            
+            ClickToCopy(address);
+            
+            if (beginModule > 0 && ulongAddress >= beginModule && ulongAddress <= endModule) {
+                ImGui.SameLine();
+                ImGui.PushStyleColor(ImGuiCol.Text, 0xffcbc0ff);
+                ClickToCopyText($"ffxiv_dx11.exe+{(ulongAddress - beginModule):X}");
+                ImGui.PopStyleColor();
+            }
+        }
+        
     }
 }

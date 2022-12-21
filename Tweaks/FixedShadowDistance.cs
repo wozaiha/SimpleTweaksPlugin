@@ -1,8 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using Dalamud.Game;
-using Dalamud.Game.Internal;
 using ImGuiNET;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.Tweaks;
 using SimpleTweaksPlugin.TweakSystem;
 
@@ -18,16 +16,18 @@ namespace SimpleTweaksPlugin.Tweaks {
         public override string Name => "固定影子距离";
         public override string Description => "设定影子距离的值以防止其在飞行中变化";
 
+        public override uint Version => 2;
+
         public class Configs : TweakConfig {
             public float ShadowDistance = 1800;
         }
         
         [StructLayout(LayoutKind.Explicit, Size = 0x3E0)]
         public struct ShadowManager {
-            [FieldOffset(0x2C)] public float BaseShadowDistance;
-            [FieldOffset(0x30)] public float ShadowDistance;
-            [FieldOffset(0x34)] public float ShitnessModifier;
-            [FieldOffset(0x38)] public float FlyingModifier;
+            [FieldOffset(0x30)] public float BaseShadowDistance;
+            [FieldOffset(0x34)] public float ShadowDistance;
+            [FieldOffset(0x38)] public float ShitnessModifier;
+            [FieldOffset(0x3C)] public float FlyingModifier;
         }
 
         private ShadowManager* shadowManager;
@@ -38,7 +38,7 @@ namespace SimpleTweaksPlugin.Tweaks {
         };
 
         public override void Setup() {
-            shadowManager = *(ShadowManager**)Common.Scanner.GetStaticAddressFromSig("89 50 28 48 8B 05 ?? ?? ?? ?? 8B 89 ?? ?? ?? ?? 89 48 2C C3 8B 4A 10");
+            shadowManager = *(ShadowManager**)Service.SigScanner.GetStaticAddressFromSig("48 8B 05 ?? ?? ?? ?? 48 8B 0C 02");
             if (shadowManager != null) base.Setup();
         }
 

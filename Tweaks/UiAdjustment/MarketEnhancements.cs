@@ -7,8 +7,8 @@ using Dalamud.Game.Text;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks.UiAdjustment; 
 
@@ -37,7 +37,7 @@ public unsafe class MarketEnhancements : UiAdjustments.SubTweak {
     public MarketEnhancementsConfig Config { get; private set; }
         
     public override string Name => "Market Enhancements";
-    public override string Description => "UI Enhancements for market board such as including tax and highlighting laxy tax.";
+    public override string Description => "UI Enhancements for market board such as including tax and highlighting lazy tax.";
     public override bool UseAutoConfig => true;
         
     private delegate void UpdateResultDelegate(AtkUnitBase* addonItemSearchResult, uint a2, ulong* a3, void* a4);
@@ -53,7 +53,7 @@ public unsafe class MarketEnhancements : UiAdjustments.SubTweak {
     public override void Enable() {
         Config = LoadConfig<MarketEnhancementsConfig>() ?? new MarketEnhancementsConfig();
         replacementUpdateResultDelegate = SetItemDetour;
-        updateResultPointer = (void*) Common.Scanner.ScanText("48 89 74 24 ?? 57 48 83 EC 30 8B C2 4D 8B D1");
+        updateResultPointer = (void*) Service.SigScanner.ScanText("48 89 74 24 ?? 57 48 83 EC 30 8B C2 4D 8B D1");
         updateResult = Marshal.GetDelegateForFunctionPointer<UpdateResultDelegate>(new IntPtr(updateResultPointer));
         addonSetupHook ??= Common.Hook("E8 ?? ?? ?? ?? 41 B1 1E", new AddonSetupDelegate(SetupDetour));
         addonSetupHook?.Enable();
@@ -120,14 +120,14 @@ public unsafe class MarketEnhancements : UiAdjustments.SubTweak {
                     
                 if (singlePriceNode->NodeText.StringPtr[0] == 0x20 || totalTextNode->NodeText.StringPtr[0] == 0x20) continue;
                     
-                var priceString = Plugin.Common.ReadSeString(singlePriceNode->NodeText).TextValue
+                var priceString = Common.ReadSeString(singlePriceNode->NodeText).TextValue
                     .Replace($"{(char) SeIconChar.Gil}", "")
                     .Replace($",", "")
                     .Replace(" ", "")
                     .Replace($".", "");
 
                 if (!ulong.TryParse(priceString, out var priceValue)) continue;
-                if (!ushort.TryParse(Plugin.Common.ReadSeString(qtyTextNode->NodeText).TextValue.Replace(",", "").Replace(".", ""), out var qtyValue)) continue;
+                if (!ushort.TryParse(Common.ReadSeString(qtyTextNode->NodeText).TextValue.Replace(",", "").Replace(".", ""), out var qtyValue)) continue;
                 if (priceValue <= 0 || qtyValue <= 0) continue;
 
                 var total = priceValue * qtyValue;
@@ -135,11 +135,11 @@ public unsafe class MarketEnhancements : UiAdjustments.SubTweak {
                 var totalWithTax = total * 105 / 100;
                 var realCostPerItem = totalWithTax / (float)qtyValue; 
                 if (Config.IncludeTaxInTotalPrice && isMarketOpen) {
-                    Plugin.Common.WriteSeString(totalTextNode->NodeText, $" {totalWithTax:N0}{(char) SeIconChar.Gil}");
+                    Common.WriteSeString(totalTextNode->NodeText, $" {totalWithTax:N0}{(char) SeIconChar.Gil}");
                 }
 
                 if (Config.IncludeTaxInSinglePrice && isMarketOpen) {
-                    Plugin.Common.WriteSeString(singlePriceNode->NodeText, $" {realCostPerItem:N2}".Trim('0').Trim('.').Trim(',') + (char) SeIconChar.Gil);
+                    Common.WriteSeString(singlePriceNode->NodeText, $" {realCostPerItem:N2}".Trim('0').Trim('.').Trim(',') + (char) SeIconChar.Gil);
                 }
 
                 var sellValue = Math.Ceiling(npcSellPrice * (hqImageNode->AtkResNode.IsVisible ? 1.1 : 1.0));

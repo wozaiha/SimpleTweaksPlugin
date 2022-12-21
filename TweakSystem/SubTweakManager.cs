@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
-using System.Reflection;
-using ImGuiNET;
 
 namespace SimpleTweaksPlugin.TweakSystem; 
 
@@ -35,6 +32,13 @@ public abstract class SubTweakManager<T> : SubTweakManager where T : BaseTweak {
         foreach (var t in GetType().Assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(T)))) {
             try {
                 var tweak = (T) Activator.CreateInstance(t);
+                if (tweak == null) continue;
+                var blacklistKey = tweak.Key;
+                if (tweak.Version > 1) blacklistKey += $"::{tweak.Version}";
+                if (PluginConfig.BlacklistedTweaks.Contains(blacklistKey)) {
+                    SimpleLog.Log("Skipping blacklisted tweak: " + tweak.Key);
+                    continue;
+                }
                 tweak.InterfaceSetup(this.Plugin, this.PluginInterface, this.PluginConfig, this.TweakProvider);
                 tweak.Setup();
                 tweakList.Add(tweak);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -11,10 +12,10 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
-using SimpleTweaksPlugin.Helper;
 using SimpleTweaksPlugin.TweakSystem;
 using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using SimpleTweaksPlugin.Utility;
 
 namespace SimpleTweaksPlugin.Tweaks.UiAdjustment; 
 
@@ -23,14 +24,16 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
         public Dictionary<string, TagCustomization> FcCustomizations = new();
         public TagCustomization DefaultCustomization = new();
         public TagCustomization WandererCustomization = new() { Enabled = false, Replacement = "<crossworldicon><homeworld>"};
+        public TagCustomization TravellerCustomization;
     }
 
     public class TagCustomization {
         public bool Enabled;
         public string Replacement = string.Empty;
+        public bool HideInDuty;
     }
 
-    private Configs config;
+    public Configs Config { get; private set; }
 
     private delegate void* UpdateNameplateDelegate(RaptureAtkModule* raptureAtkModule, NamePlateInfo* namePlateInfo, NumberArrayData* numArray, StringArrayData* stringArray, GameObject* gameObject, int numArrayIndex, int stringArrayIndex);
     private HookWrapper<UpdateNameplateDelegate> updateNameplateHook;
@@ -40,14 +43,15 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
         
     public override void Enable() {
         if (Enabled) return;
-        config = LoadConfig<Configs>() ?? new Configs();
+        Config = LoadConfig<Configs>() ?? new Configs();
+        Config.TravellerCustomization ??= new TagCustomization() { Enabled = Config.WandererCustomization.Enabled, Replacement = Config.WandererCustomization.Replacement };
         updateNameplateHook ??= Common.Hook<UpdateNameplateDelegate>("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24", UpdateNameplatesDetour);
         updateNameplateHook?.Enable();
         base.Enable();
     }
 
     public override void Disable() {
-        SaveConfig(config);
+        SaveConfig(Config);
         updateNameplateHook?.Disable();
         base.Disable();
     }
@@ -61,17 +65,22 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
         if (gameObject->ObjectKind != 1) goto ReturnOriginal;
         var battleChara = (BattleChara*) gameObject;
         try {
-            var customization = config.DefaultCustomization;
+            var customization = Config.DefaultCustomization;
             string companyTag = string.Empty;
             if (battleChara->Character.HomeWorld != battleChara->Character.CurrentWorld) {
                 // Wanderer
-                customization = config.WandererCustomization;
+                var w = Service.Data.Excel.GetSheet<World>()?.GetRow(battleChara->Character.HomeWorld);
+                if (w == null || w.DataCenter.Row == Service.ClientState.LocalPlayer?.CurrentWorld?.GameData?.DataCenter?.Row) {
+                    customization = Config.WandererCustomization;
+                } else {
+                    customization = Config.TravellerCustomization;
+                }
             } else {
                 companyTag = Encoding.UTF8.GetString(battleChara->Character.FreeCompanyTag, 6).Trim('\0', ' ');
 
                 customization = companyTag.Length switch {
                     <= 0 => null,
-                    > 0 when config.FcCustomizations.ContainsKey(companyTag) => config.FcCustomizations[companyTag],
+                    > 0 when Config.FcCustomizations.ContainsKey(companyTag) => Config.FcCustomizations[companyTag],
                     _ => customization
                 };
             }
@@ -80,6 +89,10 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
                 
 
             if (customization != null && customization.Enabled) {
+                if (customization.HideInDuty && Service.Condition[ConditionFlag.BoundByDuty56]) {
+                    customization = new TagCustomization() { Enabled = true, Replacement = "" };
+                }
+                
                 if (customization.Replacement.Trim().Length == 0) {
                     namePlateInfo->FcName.StringPtr[0] = 0;
                 } else {
@@ -114,6 +127,10 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
                                     case "<homeworld>": {
                                         var world = Service.Data.Excel.GetSheet<World>().GetRow(battleChara->Character.HomeWorld);
                                         payloads.Add(new TextPayload(world.Name));
+                                        break;
+                                    }
+                                    case "<level>": {
+                                        payloads.Add(new TextPayload(battleChara->Character.Level.ToString()));
                                         break;
                                     }
                                     case "<fctag>": {
@@ -215,6 +232,7 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
         
         private string defaultString = "默认";
         private string wandererString = "放浪神";
+        private string travellerString = "Traveller";
         private string newFcName = string.Empty;
         protected override DrawConfigDelegate DrawConfigTree => (ref bool _) => {
 
@@ -229,11 +247,11 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
             string deleteKey = null;
             string renameKey = null;
                 
-            foreach (var fc in config.FcCustomizations.OrderBy(k => k.Key)) {
+            foreach (var fc in Config.FcCustomizations.OrderBy(k => k.Key)) {
                 var k = fc.Key;
                 var edit = TagCustomizationEditor(ref k, fc.Value);
                 if (edit == ChangeType.Rename) {
-                    if (!config.FcCustomizations.ContainsKey(k)) {
+                    if (!Config.FcCustomizations.ContainsKey(k)) {
                         deleteKey = fc.Key;
                         renameKey = k;
                     }
@@ -244,14 +262,15 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
 
             if (!string.IsNullOrEmpty(deleteKey)) {
                 if (!string.IsNullOrEmpty(renameKey)) {
-                    config.FcCustomizations.Add(renameKey, config.FcCustomizations[deleteKey]);
+                    Config.FcCustomizations.Add(renameKey, Config.FcCustomizations[deleteKey]);
                 } 
-                config.FcCustomizations.Remove(deleteKey);
+                Config.FcCustomizations.Remove(deleteKey);
             }
                 
-            TagCustomizationEditor(ref wandererString, config.WandererCustomization, false);
-            TagCustomizationEditor(ref defaultString, config.DefaultCustomization, false);
-            // TagCustomizationEditor(ref noCompanyString, config.NoCompanyCustomization, false);
+            TagCustomizationEditor(ref wandererString, Config.WandererCustomization, false);
+            TagCustomizationEditor(ref travellerString, Config.TravellerCustomization, false, true);
+            TagCustomizationEditor(ref defaultString, Config.DefaultCustomization, false);
+            // TagCustomizationEditor(ref noCompanyString, Config.NoCompanyCustomization, false);
                 
             ImGui.TableNextColumn();
             ImGui.TableNextColumn();
@@ -262,8 +281,8 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
             var addNew = ImGui.InputText($"##fcList#{GetType().Name}_new_name", ref newFcName, 5, ImGuiInputTextFlags.EnterReturnsTrue);
             ImGui.TableNextColumn();
             if (ImGui.Button(LocString("AddButton", "Add") + $"##fcList#{GetType().Name}_new_button") || addNew) {
-                if (newFcName.Length > 0 && !config.FcCustomizations.ContainsKey(newFcName)) {
-                    config.FcCustomizations.Add(newFcName, new TagCustomization());
+                if (newFcName.Length > 0 && !Config.FcCustomizations.ContainsKey(newFcName)) {
+                    Config.FcCustomizations.Add(newFcName, new TagCustomization());
                     newFcName = string.Empty;
                 }
             }
@@ -271,7 +290,7 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
             if (newFcName.Length == 0) {
                 ImGui.SameLine();
                 ImGui.TextDisabled(LocString("NoFCNote", "Enter name to add FC to list."));
-            } else if (config.FcCustomizations.ContainsKey(newFcName)) {
+            } else if (Config.FcCustomizations.ContainsKey(newFcName)) {
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 0, 0, 1), LocString("FCAlreadyAddedError", "FC is already on list."));
             }
@@ -298,7 +317,7 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
         Rename,
     }
         
-    private ChangeType TagCustomizationEditor(ref string name, TagCustomization tc, bool canChange = true) {
+    private ChangeType TagCustomizationEditor(ref string name, TagCustomization tc, bool canChange = true, bool showHideInDuty = false) {
         ImGui.TableNextColumn();
 
         var changeType = ChangeType.None;
@@ -331,14 +350,14 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
 
         ImGui.TableNextColumn();
         if (isEditingName) {
-            if (config.FcCustomizations.ContainsKey(name)) {
+            if (Config.FcCustomizations.ContainsKey(name)) {
                 ImGui.TextColored(new Vector4(1, 0, 0, 1), LocString("DuplicateNameError", "This name is already added."));
             } else {
                 ImGui.TextDisabled(LocString("SaveMessage", "Press ENTER to save FC Tag."));
             }
                 
         } else {
-            ImGui.SetNextItemWidth(-1);
+            ImGui.SetNextItemWidth(showHideInDuty ? (-120 * ImGui.GetIO().FontGlobalScale) : -1);
             
             if (tc.Enabled) {
                 ImGui.InputTextWithHint($"##fcList#{GetType().Name}_replacement_{name}", "Hidden", ref tc.Replacement, 200);
@@ -360,6 +379,11 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
                         ImGui.Text("<fctag>");
                         ImGui.TableNextColumn();
                         ImGui.Text("The character's existing FC tag.");
+                        
+                        ImGui.TableNextColumn();
+                        ImGui.Text("<level>");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("The character's current job level.");
                             
                         ImGui.TableNextColumn();
                         ImGui.Text("<homeworld>");
@@ -387,6 +411,11 @@ public unsafe class CustomFreeCompanyTags : UiAdjustments.SubTweak {
             } else {
                 var s = string.Empty;
                 ImGui.InputTextWithHint($"##fcList#{GetType().Name}_replacement_{name}", "Unchanged", ref s, 50, ImGuiInputTextFlags.ReadOnly);
+            }
+            
+            if (showHideInDuty) {
+                ImGui.SameLine();
+                ImGui.Checkbox($"Hide in Duty##{GetType().Name}_hideInDuty_{name}", ref tc.HideInDuty);
             }
         }
             

@@ -1,4 +1,12 @@
 {
+  "AutoLockHotbar / Description": {
+    "message": "Automatically locks action bars when certain conditions are met.",
+    "description": "[AutoLockHotbar] Tweak Description"
+  },
+  "AutoLockHotbar / Name": {
+    "message": "Auto Lock Action Bars",
+    "description": "[AutoLockHotbar] Tweak Name"
+  },
   "AutoOpenCommendWindow / Description": {
     "message": "Open the commendation window upon completion of a duty.",
     "description": "[AutoOpenCommendWindow] Tweak Description"
@@ -14,6 +22,14 @@
   "AutoOpenLootWindow / Name": {
     "message": "Open loot window when items are added.",
     "description": "[AutoOpenLootWindow] Tweak Name"
+  },
+  "CharacterClassSwitcher / Description": {
+    "message": "Allow clicking on classes to switch to gearsets. [Note: does not work on crafters]",
+    "description": "[CharacterClassSwitcher] Tweak Description"
+  },
+  "CharacterClassSwitcher / Name": {
+    "message": "Character Window Job Switcher",
+    "description": "[CharacterClassSwitcher] Tweak Name"
   },
   "CharaViewIncreasedZoom / Description": {
     "message": "Allows zooming in near infinitely on character preview views, such as Try On and Examine.",
@@ -103,6 +119,14 @@
     "message": "Tab {0}",
     "description": "[RenameChatTabs] Rename Chat Tabs - Tab {0}"
   },
+  "ChatTweaks@ReplyChannelSwitch / Description": {
+    "message": "Allow typing /r to set active chat channel to Tell.",
+    "description": "[ReplyChannelSwitch] Tweak Description"
+  },
+  "ChatTweaks@ReplyChannelSwitch / Name": {
+    "message": "Reply Channel Switch",
+    "description": "[ReplyChannelSwitch] Tweak Name"
+  },
   "ChrDirCommand / Description": {
     "message": "Adds a command to open the directory when client side character data is stored.",
     "description": "[ChrDirCommand] Tweak Description"
@@ -154,6 +178,14 @@
   "CommandAlias / ProtectedCommandError": {
     "message": "'/{0}' is a protected command.",
     "description": "[CommandAlias] Command Alias - '/{0}' is a protected command."
+  },
+  "DataCentreOnTitleScreen / Description": {
+    "message": "Shows the current Data Centre on the Title Screen",
+    "description": "[DataCentreOnTitleScreen] Tweak Description"
+  },
+  "DataCentreOnTitleScreen / Name": {
+    "message": "Data Centre on Title Screen",
+    "description": "[DataCentreOnTitleScreen] Tweak Name"
   },
   "DisableClickTargeting / AddButton": {
     "message": "Add",
@@ -223,6 +255,14 @@
     "message": "Disable Right Click Targeting",
     "description": "[DisableClickTargeting] Disable Click Targeting - Disable Right Click Targeting"
   },
+  "DisableMountVolumeChange / Description": {
+    "message": "Prevents mount music from going quiet when not moving.",
+    "description": "[DisableMountVolumeChange] Tweak Description"
+  },
+  "DisableMountVolumeChange / Name": {
+    "message": "Disable Mount Music Volume Change",
+    "description": "[DisableMountVolumeChange] Tweak Name"
+  },
   "DisableTitleScreenMovie / Description": {
     "message": "Prevents the title screen from playing the introduction movie after 60 seconds.",
     "description": "[DisableTitleScreenMovie] Tweak Description"
@@ -287,6 +327,14 @@
     "message": "Hide Tweak",
     "description": "Hide Tweak - Hide Tweak"
   },
+  "HideMouseAfterInactivity / Description": {
+    "message": "Hides the mouse cursor after a period of inactivity like video players do.",
+    "description": "[HideMouseAfterInactivity] Tweak Description"
+  },
+  "HideMouseAfterInactivity / Name": {
+    "message": "Hide Mouse Cursor After Inactivity",
+    "description": "[HideMouseAfterInactivity] Tweak Name"
+  },
   "LegacyCameraLock / Description": {
     "message": "Prevents camera rotation when using Legacy movement type.",
     "description": "[LegacyCameraLock] Tweak Description"
@@ -319,6 +367,46 @@
     "message": "More Gear Sets",
     "description": "[MoreGearSets] Tweak Name"
   },
+  "NoSellList / Description": {
+    "message": "Allows you to define a list of items that can not be sold to a vendor.",
+    "description": "[NoSellList] Tweak Description"
+  },
+  "NoSellList / Name": {
+    "message": "No Sell List",
+    "description": "[NoSellList] Tweak Name"
+  },
+  "PidCommand / Description": {
+    "message": "Adds the command '/pid' to show current process id.",
+    "description": "[PidCommand] Tweak Description"
+  },
+  "PidCommand / Name": {
+    "message": "Show process id Command",
+    "description": "[PidCommand] Tweak Name"
+  },
+  "QuickSellItems / Description": {
+    "message": "Hold a modifier key to sell items from your inventory in one click.",
+    "description": "[QuickSellItems] Tweak Description"
+  },
+  "QuickSellItems / Name": {
+    "message": "Quick Sell Items at Vendors",
+    "description": "[QuickSellItems] Tweak Name"
+  },
+  "RememberQuickGathering / Description": {
+    "message": "Remembers quick gathering status even after gathering at unspoiled nodes.",
+    "description": "[RememberQuickGathering] Tweak Description"
+  },
+  "RememberQuickGathering / Name": {
+    "message": "Remember Quick Gathering",
+    "description": "[RememberQuickGathering] Tweak Name"
+  },
+  "ScreenshotFileName / Description": {
+    "message": "Change the file name format for screenshots.",
+    "description": "[ScreenshotFileName] Tweak Description"
+  },
+  "ScreenshotFileName / Name": {
+    "message": "Screenshot File Name",
+    "description": "[ScreenshotFileName] Tweak Name"
+  },
   "SetOptionCommand / alias": {
     "message": "alias",
     "description": "[SetOptionCommand] Set Option Command - alias"
@@ -342,6 +430,30 @@
   "SetOptionCommand / values": {
     "message": "values",
     "description": "[SetOptionCommand] Set Option Command - values"
+  },
+  "SmartStrafe / Description": {
+    "message": "Inteligently switches keyboard controls between strafing and turning.\n(Legacy type movmement only)",
+    "description": "[SmartStrafe] Tweak Description"
+  },
+  "SmartStrafe / Name": {
+    "message": "Smart Strafe",
+    "description": "[SmartStrafe] Tweak Name"
+  },
+  "SyncCrafterBars / Description": {
+    "message": "Keeps DoH job bars in sync",
+    "description": "[SyncCrafterBars] Tweak Description"
+  },
+  "SyncCrafterBars / Name": {
+    "message": "Sync Crafter Bars",
+    "description": "[SyncCrafterBars] Tweak Name"
+  },
+  "SyncGathererBars / Description": {
+    "message": "Keeps miner and botanist hotbars in sync.",
+    "description": "[SyncGathererBars] Tweak Description"
+  },
+  "SyncGathererBars / Name": {
+    "message": "Sync Gatherer Bars",
+    "description": "[SyncGathererBars] Tweak Name"
   },
   "TooltipTweaks / Name": {
     "message": "Tooltip Tweaks",
@@ -403,6 +515,10 @@
     "message": "Desynthesis Delta",
     "description": "[DesynthesisSkill] Show Desynthesis Skill - Desynthesis Delta"
   },
+    "TooltipTweaks@DesynthesisSkill / Colour Value": {
+    "message": "Colour Value",
+    "description": "[DesynthesisSkill] Show Desynthesis Skill - Colour Value"
+  },
   "TooltipTweaks@DesynthesisSkill / Name": {
     "message": "Show Desynthesis Skill",
     "description": "[DesynthesisSkill] Tweak Name"
@@ -442,6 +558,14 @@
   "TooltipTweaks@MateriaStats / Simplified Combined Display": {
     "message": "Simplified Combined Display",
     "description": "[MateriaStats] Materia Stats - Simplified Combined Display"
+  },
+  "TooltipTweaks@PaintingPreview / Description": {
+    "message": "Add an image preview for paintings to item tooltips.",
+    "description": "[PaintingPreview] Tweak Description"
+  },
+  "TooltipTweaks@PaintingPreview / Name": {
+    "message": "Show Painting Preview",
+    "description": "[PaintingPreview] Tweak Name"
   },
   "TooltipTweaks@PrecisionDurability / Description": {
     "message": "Show partial percentages for durability.",
@@ -483,6 +607,14 @@
     "message": "Use Hexadecimal ID",
     "description": "[ShowItemID] [Config] Use Hexadecimal ID"
   },
+  "TryOnCorrectItem / Description": {
+    "message": "Show the correct item when trying on a glamoured item.",
+    "description": "[TryOnCorrectItem] Tweak Description"
+  },
+  "TryOnCorrectItem / Name": {
+    "message": "Try On Correct Item",
+    "description": "[TryOnCorrectItem] Tweak Name"
+  },
   "UiAdjustments / Name": {
     "message": "UI Tweaks",
     "description": "[UiAdjustments] Tweak Name"
@@ -498,6 +630,14 @@
   "UiAdjustments@AccurateVentureTimes / Simple Display": {
     "message": "Simple Display",
     "description": "[AccurateVentureTimes] [Config] Simple Display"
+  },
+  "UiAdjustments@AlwaysYes / Description": {
+    "message": "Default cursor to yes when using confirm (num 0).",
+    "description": "[AlwaysYes] Tweak Description"
+  },
+  "UiAdjustments@AlwaysYes / Name": {
+    "message": "Always Yes",
+    "description": "[AlwaysYes] Tweak Name"
   },
   "UiAdjustments@BattleTalkAdjustments / Description": {
     "message": "Allows moving of the dialogue box that appears in the middle of battles.",
@@ -615,6 +755,14 @@
     "message": "Y Position Offset",
     "description": "[ComboTimer] [Config] Y Position Offset"
   },
+  "UiAdjustments@ControlHintMirroring / Description": {
+    "message": "Will display the keybind hint for any hotbar slot onto unbound slots with the same action.",
+    "description": "[ControlHintMirroring] Tweak Description"
+  },
+  "UiAdjustments@ControlHintMirroring / Name": {
+    "message": "Duplicate Keybind Hints Between Hotbars",
+    "description": "[ControlHintMirroring] Tweak Name"
+  },
   "UiAdjustments@CustomFreeCompanyTags / AddButton": {
     "message": "Add",
     "description": "[CustomFreeCompanyTags] Custom Free Company Tags - Add"
@@ -711,9 +859,33 @@
     "message": "Shows your current desynthesis level and the item's optimal level on the desynthesis item selection window.\nAlso indicates if an item is part of a gear set, optionally preventing selection of gearset items.",
     "description": "[ExtendedDesynthesisWindow] Tweak Description"
   },
+  "UiAdjustments@ExtendedDesynthesisWindow / DesynthesisDelta": {
+    "message": "Show desynthesis delta",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Show desynthesis delta"
+  },
+  "UiAdjustments@ExtendedDesynthesisWindow / ExcludeGearSet": {
+    "message": "Items in gear sets.",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Items in gear sets."
+  },
+  "UiAdjustments@ExtendedDesynthesisWindow / ExcludeHeader": {
+    "message": "Exlude from the 'All Items' category:",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Exlude from the 'All Items' category:"
+  },
+  "UiAdjustments@ExtendedDesynthesisWindow / ExcludeNoSkill": {
+    "message": "Items that give no desynthesis levels.",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Items that give no desynthesis levels."
+  },
+  "UiAdjustments@ExtendedDesynthesisWindow / LimitNote": {
+    "message": "Note: Only 140 items can be displayed at once, anything more will be cut off.",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Note: Only 140 items can be displayed at once, anything more will be cut off."
+  },
   "UiAdjustments@ExtendedDesynthesisWindow / Name": {
     "message": "Extended Desynthesis Window",
     "description": "[ExtendedDesynthesisWindow] Tweak Name"
+  },
+  "UiAdjustments@ExtendedDesynthesisWindow / ShowAll": {
+    "message": "Add option to show all items",
+    "description": "[ExtendedDesynthesisWindow] Extended Desynthesis Window - Add option to show all items"
   },
   "UiAdjustments@ExtendedDesynthesisWindow / YellowForSkillGain": {
     "message": "Highlight potential skill gains (Yellow)",
@@ -990,6 +1162,14 @@
   "UiAdjustments@PartyListStatusTimers / Name": {
     "message": "Party List Status Timers",
     "description": "[PartyListStatusTimers] Tweak Name"
+  },
+  "UiAdjustments@RecolorOwnStatusTimers / Description": {
+    "message": "Allows the recoloring of the personal status timers color.",
+    "description": "[RecolorOwnStatusTimers] Tweak Description"
+  },
+  "UiAdjustments@RecolorOwnStatusTimers / Name": {
+    "message": "Recolor Own Status Timers",
+    "description": "[RecolorOwnStatusTimers] Tweak Name"
   },
   "UiAdjustments@ReducedDeepDungeonInfo / Description": {
     "message": "Removes the redundant infos from the deep dungeon character info.",

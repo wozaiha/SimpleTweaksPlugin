@@ -1,7 +1,8 @@
 ﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using SimpleTweaksPlugin.GameStructs;
 using SimpleTweaksPlugin.TweakSystem;
+using SimpleTweaksPlugin.Utility;
 using static SimpleTweaksPlugin.Tweaks.TooltipTweaks.ItemTooltipField;
 
 namespace SimpleTweaksPlugin.Tweaks.Tooltips; 
@@ -16,6 +17,9 @@ public class ShowItemID : TooltipTweaks.SubTweak {
         public bool ShouldShowBoth() => Hex;
         [TweakConfigOption("Show Both HEX and Decimal", 1, ConditionalDisplay = true, SameLine = true)]
         public bool Both = false;
+        
+        [TweakConfigOption("Show Resolved Action ID", 2)]
+        public bool ShowResolvedActionId = true;
     }
 
     public Configs Config { get; private set; }
@@ -52,23 +56,24 @@ public class ShowItemID : TooltipTweaks.SubTweak {
         SetTooltipString(stringArrayData, ItemUiCategory, seStr);
     }
 
-    public override unsafe void OnActionTooltip(AddonActionDetail* addon, TooltipTweaks.HoveredAction action) {
-        if (addon->AtkUnitBase.UldManager.NodeList == null || addon->AtkUnitBase.UldManager.NodeListCount < 29) return;
-        var categoryText = (AtkTextNode*) addon->AtkUnitBase.UldManager.NodeList[28];
+    public override unsafe void OnActionTooltip(AtkUnitBase* addon, TooltipTweaks.HoveredActionDetail action) {
+        if (addon->UldManager.NodeList == null || addon->UldManager.NodeListCount < 29) return;
+        var categoryText = (AtkTextNode*) addon->UldManager.NodeList[28];
         if (categoryText == null) return;
-        var seStr = Plugin.Common.ReadSeString(categoryText->NodeText.StringPtr);
+        var seStr = Common.ReadSeString(categoryText->NodeText.StringPtr);
         if (seStr.Payloads.Count <= 1) {
             if (seStr.Payloads.Count >= 1) {
                 seStr.Payloads.Add(new TextPayload("   "));
             }
             seStr.Payloads.Add(new UIForegroundPayload(3));
+            var id = Config.ShowResolvedActionId ? ActionManager.Instance()->GetAdjustedActionId(action.Id) : action.Id;
             seStr.Payloads.Add(new TextPayload($"["));
             if (Config.Hex == false || Config.Both) {
-                seStr.Payloads.Add(new TextPayload($"{action.Id}"));
+                seStr.Payloads.Add(new TextPayload($"{id}"));
             }
             if (Config.Hex) {
                 if (Config.Both) seStr.Payloads.Add(new TextPayload(" - "));
-                seStr.Payloads.Add(new TextPayload($"0x{action.Id:X}"));
+                seStr.Payloads.Add(new TextPayload($"0x{id:X}"));
             }
             seStr.Payloads.Add(new TextPayload($"]"));
             seStr.Payloads.Add(new UIForegroundPayload(0));
